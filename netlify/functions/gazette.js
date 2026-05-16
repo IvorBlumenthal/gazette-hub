@@ -41,7 +41,7 @@ exports.handler = async (event) => {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 2000,
           system:
             'You are a South African government gazette analyst. ' +
@@ -101,7 +101,7 @@ exports.handler = async (event) => {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 700,
           messages: [{ role: 'user', content: prompt }],
         }),
