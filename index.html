@@ -8,51 +8,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-
-:root{
-  --navy:#1a2744;
-  --navy-mid:#253459;
-  --navy-light:#3d5490;
-  --gold:#c9922a;
-  --gold-hover:#b5821f;
-  --gold-pale:#fdf6e8;
-  --cream:#faf8f3;
-  --cream-dark:#f0ece0;
-  --white:#ffffff;
-  --text:#1a2744;
-  --text-mid:#445070;
-  --text-light:#7a82a0;
-  --border:rgba(26,39,68,0.10);
-  --border-mid:rgba(26,39,68,0.20);
-  --r:8px;
-  --rlg:14px;
-  --rxl:20px;
-}
-
+:root{--navy:#1a2744;--navy-mid:#253459;--gold:#c9922a;--gold-hover:#b5821f;--gold-pale:#fdf6e8;--cream:#faf8f3;--cream-dark:#f0ece0;--white:#fff;--text:#1a2744;--text-mid:#445070;--text-light:#7a82a0;--border:rgba(26,39,68,.10);--border-mid:rgba(26,39,68,.20);--r:8px;--rlg:14px;--rxl:20px}
 html{scroll-behavior:smooth}
 body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;font-weight:300}
-
-/* ── HEADER ── */
-.hdr{background:var(--navy);padding:0 2.5rem;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,0.06)}
-.hdr-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:66px;gap:1.5rem}
-.brand{display:flex;align-items:center;gap:12px;flex-shrink:0;text-decoration:none}
+.hdr{background:var(--navy);padding:0 2.5rem;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,.06)}
+.hdr-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;height:66px;gap:1.5rem}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none}
 .brand-mark{width:36px;height:36px;background:var(--gold);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:#fff}
 .brand-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:500;color:#fff;white-space:nowrap}
-.brand-sub{font-size:11px;color:rgba(255,255,255,0.38);margin-top:1px;letter-spacing:0.04em}
-
-/* ── MAIN ── */
+.brand-sub{font-size:11px;color:rgba(255,255,255,.38);margin-top:1px}
 main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
-
-/* ── PERIOD BAR ── */
 .period-bar{display:flex;align-items:center;gap:10px;margin-bottom:2.5rem;flex-wrap:wrap}
 .period-label{font-size:12px;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
-.pbtn{padding:8px 20px;background:var(--white);border:1px solid var(--border-mid);border-radius:30px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;color:var(--text-mid);cursor:pointer;transition:all .15s;white-space:nowrap}
+.pbtn{padding:8px 20px;background:var(--white);border:1px solid var(--border-mid);border-radius:30px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text-mid);cursor:pointer;transition:all .15s;white-space:nowrap}
 .pbtn:hover{border-color:var(--gold);color:var(--navy)}
 .pbtn.active{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:500}
 .pbtn.featured{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:500}
 .pbtn.featured.active{background:var(--navy);border-color:var(--navy)}
-
-/* ── SPOTLIGHT ── */
 .spotlight{margin-bottom:3rem}
 .spotlight-hd{display:flex;align-items:baseline;gap:14px;margin-bottom:.5rem}
 .spotlight-hd h2{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:500;color:var(--navy)}
@@ -60,22 +32,16 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
 .spotlight-desc{font-size:13px;color:var(--text-light);margin-bottom:1.25rem;line-height:1.55}
 .load-trigger{width:100%;padding:1.1rem;background:var(--white);border:1px solid var(--border-mid);border-radius:var(--rlg);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:var(--gold);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
 .load-trigger:hover{background:var(--gold-pale);border-color:var(--gold)}
-
-/* ── DIVIDER ── */
 .divider{border:none;border-top:1px solid var(--border);margin:2.5rem 0}
-
-/* ── GENERAL SEARCH SECTION ── */
 .search-section{margin-bottom:3rem}
-.section-hd{display:flex;align-items:baseline;gap:14px;margin-bottom:.5rem}
-.section-hd h2{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:500;color:var(--navy)}
+.section-hd h2{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:500;color:var(--navy);margin-bottom:.5rem}
 .section-desc{font-size:13px;color:var(--text-light);margin-bottom:1.25rem;line-height:1.55}
 .search-box-wrap{display:flex;gap:10px;margin-bottom:1rem}
 .search-box-wrap input{flex:1;padding:13px 18px;font-size:15px;font-family:'DM Sans',sans-serif;font-weight:300;border:1.5px solid var(--border-mid);border-radius:var(--rlg);background:var(--white);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s}
-.search-box-wrap input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,146,42,0.12)}
+.search-box-wrap input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,146,42,.12)}
 .search-box-wrap input::placeholder{color:var(--text-light)}
-.btn-search-main{padding:13px 30px;background:var(--gold);border:none;border-radius:var(--rlg);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:#fff;cursor:pointer;white-space:nowrap;transition:background .15s;flex-shrink:0}
+.btn-search-main{padding:13px 30px;background:var(--gold);border:none;border-radius:var(--rlg);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:#fff;cursor:pointer;transition:background .15s;flex-shrink:0}
 .btn-search-main:hover{background:var(--gold-hover)}
-.btn-search-main:disabled{background:#ccc;cursor:not-allowed}
 .sugg-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem}
 .sugg-label{font-size:12px;color:var(--text-light);flex-shrink:0}
 .sugg-pill{padding:5px 13px;background:var(--white);border:1px solid var(--border-mid);border-radius:20px;font-size:12px;color:var(--text-mid);cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -85,25 +51,21 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
 .srch-results-hd h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:500;color:var(--navy)}
 .btn-clear{background:none;border:1px solid var(--border-mid);border-radius:var(--r);padding:6px 14px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-light);cursor:pointer;transition:all .15s}
 .btn-clear:hover{background:var(--cream-dark);color:var(--text)}
-
-/* ── CATEGORIES ── */
 .lib-heading{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1.5rem}
 .cat-section{margin-bottom:1rem}
 .cat-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:var(--navy);border-radius:var(--rlg);cursor:pointer;user-select:none;transition:background .15s}
 .cat-section.open .cat-header{border-radius:var(--rlg) var(--rlg) 0 0}
 .cat-header:hover{background:var(--navy-mid)}
 .cat-hd-left{display:flex;align-items:center;gap:13px}
-.cat-icon{width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.cat-icon{width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .cat-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:500;color:#fff}
-.cat-hint{font-size:12px;color:rgba(255,255,255,0.40);margin-top:2px}
-.cat-chevron{font-size:18px;color:rgba(255,255,255,0.45);transition:transform .25s;flex-shrink:0}
+.cat-hint{font-size:12px;color:rgba(255,255,255,.40);margin-top:2px}
+.cat-chevron{font-size:18px;color:rgba(255,255,255,.45);transition:transform .25s;flex-shrink:0}
 .cat-section.open .cat-chevron{transform:rotate(90deg)}
 .cat-body{display:none;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--rlg) var(--rlg);background:var(--white);overflow:hidden}
 .cat-section.open .cat-body{display:block}
 .cat-load-btn{width:100%;padding:1.1rem;background:none;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:var(--gold);cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
 .cat-load-btn:hover{background:var(--gold-pale)}
-
-/* ── GAZETTE CARDS ── */
 .gz-card{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);transition:background .12s;cursor:pointer}
 .gz-card:last-child{border-bottom:none}
 .gz-card:hover{background:var(--cream)}
@@ -113,22 +75,17 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
 .chip{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap}
 .chip-date{background:var(--cream-dark);color:var(--text-light)}
 .chip-no{background:#e8edf8;color:var(--navy-mid);border:1px solid #c5cee8}
-.chip-new{background:var(--gold);color:#fff}
 .gz-summary{font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:10px}
 .gz-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .gz-prac{font-size:12px;color:var(--text-light);font-style:italic;flex:1;line-height:1.5}
 .btn-extract{padding:6px 15px;background:transparent;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--navy-mid);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
 .btn-extract:hover{background:var(--navy);border-color:var(--navy);color:#fff}
-
-/* ── SPINNER / EMPTY / ERROR ── */
 .spin-wrap{padding:2rem;text-align:center}
 .spinner{width:26px;height:26px;border:2px solid var(--border-mid);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto .75rem}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spin-label{font-size:13px;color:var(--text-light)}
 .empty-msg{padding:2rem 1.5rem;text-align:center;color:var(--text-light);font-size:14px;line-height:1.65}
 .err-msg{margin:.75rem 1.5rem 1rem;padding:1rem 1.25rem;background:#fef2f2;border-radius:var(--r);color:#a33;font-size:13px;line-height:1.5}
-
-/* ── MODAL ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(10,18,40,.65);z-index:200;align-items:center;justify-content:center;padding:1.5rem}
 .overlay.open{display:flex}
 .modal{background:var(--white);border-radius:var(--rxl);width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(10,18,40,.35);animation:mIn .2s ease}
@@ -157,72 +114,42 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
 .btn-copy:hover{background:var(--navy-mid)}
 .btn-again{padding:7px 16px;background:transparent;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);cursor:pointer;transition:all .15s}
 .btn-again:hover{background:var(--cream-dark)}
-
-/* ── RESPONSIVE ── */
-@media(max-width:720px){
-  .hdr{padding:0 1.25rem}
-  .hdr-inner{flex-wrap:wrap;height:auto;padding:.75rem 0;gap:.75rem}
-  main{padding:1.5rem 1.25rem 4rem}
-  .gz-top{flex-direction:column;gap:5px}
-  .gz-chips{justify-content:flex-start}
-  .sector-grid{grid-template-columns:1fr 1fr}
-  .search-box-wrap{flex-direction:column}
-  .btn-search-main{width:100%}
-}
+@media(max-width:720px){.hdr{padding:0 1.25rem}.hdr-inner{flex-wrap:wrap;height:auto;padding:.75rem 0}main{padding:1.5rem 1.25rem 4rem}.gz-top{flex-direction:column;gap:5px}.gz-chips{justify-content:flex-start}.sector-grid{grid-template-columns:1fr 1fr}.search-box-wrap{flex-direction:column}.btn-search-main{width:100%}}
 </style>
 </head>
 <body>
-
-<!-- HEADER -->
 <header class="hdr">
   <div class="hdr-inner">
     <a class="brand" href="#">
       <div class="brand-mark">A</div>
-      <div>
-        <div class="brand-name">SA Gazette Intelligence Hub</div>
-        <div class="brand-sub">ArkKonsult &middot; Labour &amp; HR Practitioner Edition</div>
-      </div>
+      <div><div class="brand-name">SA Gazette Intelligence Hub</div><div class="brand-sub">ArkKonsult &middot; Labour &amp; HR Practitioner Edition</div></div>
     </a>
   </div>
 </header>
-
 <main>
-
-  <!-- PERIOD SELECTOR -->
   <div class="period-bar">
     <span class="period-label">Show gazettes from</span>
     <button class="pbtn featured active" data-months="3" onclick="setPeriod(this)">Last 3 months</button>
-    <button class="pbtn" data-months="6"  onclick="setPeriod(this)">Last 6 months</button>
+    <button class="pbtn" data-months="6" onclick="setPeriod(this)">Last 6 months</button>
     <button class="pbtn" data-months="12" onclick="setPeriod(this)">Last 12 months</button>
     <button class="pbtn" data-months="24" onclick="setPeriod(this)">Last 24 months</button>
   </div>
-
-  <!-- SPOTLIGHT: RECENT ACROSS ALL CATEGORIES -->
   <section class="spotlight" id="spotlight">
     <div class="spotlight-hd">
-      <h2 id="spotlight-title">Recent gazettes — last 3 months</h2>
+      <h2 id="spotlight-title">Recent gazettes &mdash; last 3 months</h2>
       <span class="tag-new" id="spotlight-tag">Latest</span>
     </div>
-    <p class="spotlight-desc">All significant gazette notices published across all practitioner categories in the selected period, summarised for immediate use.</p>
-    <div id="spotlight-body">
-      <button class="load-trigger" onclick="loadSpotlight()">↓ &nbsp;Load recent gazettes</button>
-    </div>
+    <p class="spotlight-desc">Significant gazette notices published across all practitioner categories in the selected period.</p>
+    <div id="spotlight-body"><button class="load-trigger" onclick="loadSpotlight()">&#8595;&nbsp; Load recent gazettes</button></div>
   </section>
-
   <hr class="divider"/>
-
-  <!-- GENERAL SEARCH -->
   <section class="search-section" id="search-section">
-    <div class="section-hd">
-      <h2>Search all gazettes</h2>
-    </div>
-    <p class="section-desc">Search across all South African Government Gazettes by keyword, Act name, department, topic, or gazette number.</p>
-
+    <div class="section-hd"><h2>Search all gazettes</h2></div>
+    <p class="section-desc">Search across all South African Government Gazette notices by keyword, Act name, department, topic, or gazette number.</p>
     <div class="search-box-wrap">
-      <input type="text" id="srch-input" placeholder="e.g. National Minimum Wage, CCMA, SARS VAT, bargaining council, BCEA amendment…" />
-      <button class="btn-search-main" id="srch-btn" onclick="runSearch()">Search gazettes</button>
+      <input type="text" id="srch-input" placeholder="e.g. National Minimum Wage, CCMA, SARS VAT, bargaining council, BCEA amendment&hellip;"/>
+      <button class="btn-search-main" onclick="runSearch()">Search gazettes</button>
     </div>
-
     <div class="sugg-row">
       <span class="sugg-label">Try:</span>
       <span class="sugg-pill" onclick="quickSearch('National Minimum Wage')">National Minimum Wage</span>
@@ -234,35 +161,27 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
       <span class="sugg-pill" onclick="quickSearch('UIF amendments')">UIF amendments</span>
       <span class="sugg-pill" onclick="quickSearch('NHI regulations')">NHI regulations</span>
     </div>
-
     <div id="srch-results">
       <div class="srch-results-hd">
         <h3 id="srch-results-title">Results</h3>
-        <button class="btn-clear" onclick="clearSearch()">✕ Clear results</button>
+        <button class="btn-clear" onclick="clearSearch()">&#10005; Clear</button>
       </div>
       <div id="srch-results-list"></div>
     </div>
   </section>
-
   <hr class="divider"/>
-
-  <!-- CURATED LIBRARY BY CATEGORY -->
-  <p class="lib-heading">Curated library — by category</p>
+  <p class="lib-heading">Curated library &mdash; by category</p>
   <div id="cat-container"></div>
-
 </main>
-
-<!-- EXTRACT MODAL -->
 <div class="overlay" id="overlay" onclick="overlayClick(event)">
   <div class="modal" id="modal">
     <div class="modal-hdr">
       <div class="modal-title" id="modal-title">Gazette notice</div>
-      <button class="modal-close" onclick="closeModal()">×</button>
+      <button class="modal-close" onclick="closeModal()">&#215;</button>
     </div>
     <div class="modal-body">
       <p class="mlabel">Summary</p>
       <div class="msummary" id="modal-summary"></div>
-
       <p class="mlabel" style="margin-bottom:8px;">Extract clauses relevant to my sector</p>
       <div class="sector-grid">
         <div class="sector-chip" onclick="toggleSector(this)">Manufacturing</div>
@@ -278,11 +197,8 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
         <div class="sector-chip" onclick="toggleSector(this)">Professional Services</div>
         <div class="sector-chip" onclick="toggleSector(this)">Public Sector</div>
       </div>
-
-      <textarea class="ctx-box" id="ctx-box" placeholder="Optional: add specific context — e.g. 'We employ 45 staff in a bargaining council environment' or 'Client is a small manufacturer in KZN'…"></textarea>
-
+      <textarea class="ctx-box" id="ctx-box" placeholder="Optional: add specific context &mdash; e.g. 'We employ 45 staff in a bargaining council environment'&hellip;"></textarea>
       <button class="btn-run" id="btn-run" onclick="runExtract()">Extract relevant clauses</button>
-
       <div class="extract-out" id="extract-out"></div>
       <div class="act-row" id="act-row" style="display:none">
         <button class="btn-copy" onclick="copyExtract()">Copy to clipboard</button>
@@ -291,365 +207,173 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
     </div>
   </div>
 </div>
-
 <script>
-// ── The API proxy endpoint — served by Netlify function ───────────────────
-const API_ENDPOINT = '/.netlify/functions/gazette';
-
-// ── CATEGORIES ────────────────────────────────────────────────────────────
-const CATEGORIES = [
-  { id:'labour',      icon:'⚖️',  name:'Labour & Employment',    hint:'Wages, conditions, CCMA, bargaining councils, LRA, BCEA' },
-  { id:'bbbee',       icon:'🤝',  name:'B-BBEE',                 hint:'Codes of Good Practice, sector charters, verification' },
-  { id:'regs',        icon:'📋',  name:'Regulations & Bills',    hint:'New legislation, amendments, Bills before Parliament' },
-  { id:'procurement', icon:'🏛️',  name:'Procurement & Tenders',  hint:'PFMA, public contracts, preferential procurement' },
-  { id:'environment', icon:'🌿',  name:'Environment',            hint:'NEMA, climate, conservation, environmental compliance' },
-  { id:'health',      icon:'🏥',  name:'Health & Medicines',     hint:'NHI, SAHPRA, regulations, medicines control' },
-  { id:'tax',         icon:'📊',  name:'Tax & Finance',          hint:'SARS, VAT, income tax, National Treasury notices' },
+const API = '/.netlify/functions/gazette';
+const CATS = [
+  {id:'labour',icon:'&#x2696;&#xFE0F;',name:'Labour &amp; Employment',hint:'Wages, conditions, CCMA, bargaining councils, LRA, BCEA'},
+  {id:'bbbee',icon:'&#x1F91D;',name:'B-BBEE',hint:'Codes of Good Practice, sector charters, verification'},
+  {id:'regs',icon:'&#x1F4CB;',name:'Regulations &amp; Bills',hint:'New legislation, amendments, Bills before Parliament'},
+  {id:'procurement',icon:'&#x1F3DB;&#xFE0F;',name:'Procurement &amp; Tenders',hint:'PFMA, public contracts, preferential procurement'},
+  {id:'environment',icon:'&#x1F33F;',name:'Environment',hint:'NEMA, climate, conservation, environmental compliance'},
+  {id:'health',icon:'&#x1F3E5;',name:'Health &amp; Medicines',hint:'NHI, SAHPRA, regulations, medicines control'},
+  {id:'tax',icon:'&#x1F4CA;',name:'Tax &amp; Finance',hint:'SARS, VAT, income tax, National Treasury notices'},
 ];
+const CAT_LABELS={labour:'Labour & Employment',bbbee:'B-BBEE',regs:'Regulations & Bills',procurement:'Procurement & Tenders',environment:'Environment',health:'Health & Medicines',tax:'Tax & Finance',all:'General'};
+const PERIOD_LABELS={3:'last 3 months',6:'last 6 months',12:'last 12 months',24:'last 24 months'};
+let currentPeriod=3,currentGazette=null,spotlightLoaded=false;
+const catState={};
 
-const PERIOD_LABELS = { 3:'last 3 months', 6:'last 6 months', 12:'last 12 months', 24:'last 24 months' };
-let currentPeriod = 3;
-let currentGazette = null;
-let spotlightLoaded = false;
-const catState = {};
-
-// ── INIT ──────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded',()=>{
   buildCategories();
-  document.getElementById('srch-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') runSearch();
-  });
+  document.getElementById('srch-input').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
 });
 
-// ── PERIOD ────────────────────────────────────────────────────────────────
-function setPeriod(btn) {
-  document.querySelectorAll('.pbtn').forEach(b => b.classList.remove('active'));
+function setPeriod(btn){
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  currentPeriod = parseInt(btn.dataset.months);
-  document.getElementById('spotlight-title').textContent = 'Recent gazettes — ' + PERIOD_LABELS[currentPeriod];
-  document.getElementById('spotlight-tag').textContent = currentPeriod <= 3 ? 'Latest' : PERIOD_LABELS[currentPeriod];
-  spotlightLoaded = false;
-  document.getElementById('spotlight-body').innerHTML =
-    '<button class="load-trigger" onclick="loadSpotlight()">↓ &nbsp;Load recent gazettes</button>';
-  Object.keys(catState).forEach(id => { catState[id] = 'idle'; });
-  document.querySelectorAll('.cat-body').forEach(body => {
-    body.innerHTML = '<button class="cat-load-btn" onclick="loadCategory(\'' +
-      body.dataset.catId + '\')">↓ &nbsp;Load ' + PERIOD_LABELS[currentPeriod] + ' notices</button>';
+  currentPeriod=parseInt(btn.dataset.months);
+  document.getElementById('spotlight-title').textContent='Recent gazettes \u2014 '+PERIOD_LABELS[currentPeriod];
+  document.getElementById('spotlight-tag').textContent=currentPeriod<=3?'Latest':PERIOD_LABELS[currentPeriod];
+  spotlightLoaded=false;
+  document.getElementById('spotlight-body').innerHTML='<button class="load-trigger" onclick="loadSpotlight()">&#8595;&nbsp; Load recent gazettes</button>';
+  Object.keys(catState).forEach(id=>{catState[id]='idle';});
+  document.querySelectorAll('.cat-body').forEach(body=>{
+    body.innerHTML='<button class="cat-load-btn" onclick="loadCategory(\''+body.dataset.catId+'\')">&#8595;&nbsp; Load '+PERIOD_LABELS[currentPeriod]+' notices</button>';
   });
 }
 
-// ── SPOTLIGHT ─────────────────────────────────────────────────────────────
-async function loadSpotlight() {
-  if (spotlightLoaded) return;
-  spotlightLoaded = true;
-  const body = document.getElementById('spotlight-body');
-  body.innerHTML = spinner('Searching all gazette categories for the ' + PERIOD_LABELS[currentPeriod] + '…');
-  const notices = await fetchNotices('all', currentPeriod);
-  if (!notices) {
-    body.innerHTML = '<div class="err-msg">Could not load notices. Please try again shortly.</div>';
-    spotlightLoaded = false; return;
-  }
-  if (notices.length === 0) {
-    body.innerHTML = '<div class="empty-msg">No significant notices found for this period.</div>'; return;
-  }
-  body.innerHTML = cardList(notices);
+async function loadSpotlight(){
+  if(spotlightLoaded)return;
+  spotlightLoaded=true;
+  const body=document.getElementById('spotlight-body');
+  body.innerHTML=spinner('Loading recent gazette notices\u2026');
+  const notices=await api({type:'gazette',category:'all',months:currentPeriod});
+  if(!notices){body.innerHTML='<div class="err-msg">Could not load notices. Please try again.</div>';spotlightLoaded=false;return;}
+  if(notices.length===0){body.innerHTML='<div class="empty-msg">No notices returned for this period.</div>';return;}
+  body.innerHTML=cardList(notices);
 }
 
-// ── CATEGORIES ────────────────────────────────────────────────────────────
-function buildCategories() {
-  const container = document.getElementById('cat-container');
-  CATEGORIES.forEach(cat => {
-    catState[cat.id] = 'idle';
-    const section = document.createElement('div');
-    section.className = 'cat-section';
-    section.id = 'cat-' + cat.id;
-    section.innerHTML = `
-      <div class="cat-header" onclick="toggleCat('${cat.id}')">
-        <div class="cat-hd-left">
-          <div class="cat-icon">${cat.icon}</div>
-          <div>
-            <div class="cat-name">${cat.name}</div>
-            <div class="cat-hint">${cat.hint}</div>
-          </div>
-        </div>
-        <div class="cat-chevron">›</div>
-      </div>
-      <div class="cat-body" data-cat-id="${cat.id}">
-        <button class="cat-load-btn" onclick="loadCategory('${cat.id}')">
-          ↓ &nbsp;Load ${PERIOD_LABELS[currentPeriod]} notices
-        </button>
-      </div>`;
+function buildCategories(){
+  const container=document.getElementById('cat-container');
+  CATS.forEach(cat=>{
+    catState[cat.id]='idle';
+    const section=document.createElement('div');
+    section.className='cat-section';
+    section.id='cat-'+cat.id;
+    section.innerHTML=`<div class="cat-header" onclick="toggleCat('${cat.id}')"><div class="cat-hd-left"><div class="cat-icon">${cat.icon}</div><div><div class="cat-name">${cat.name}</div><div class="cat-hint">${cat.hint}</div></div></div><div class="cat-chevron">&#x203A;</div></div><div class="cat-body" data-cat-id="${cat.id}"><button class="cat-load-btn" onclick="loadCategory('${cat.id}')">&#8595;&nbsp; Load ${PERIOD_LABELS[currentPeriod]} notices</button></div>`;
     container.appendChild(section);
   });
 }
 
-function toggleCat(id) {
-  const section = document.getElementById('cat-' + id);
-  section.classList.toggle('open');
+function toggleCat(id){document.getElementById('cat-'+id).classList.toggle('open');}
+
+async function loadCategory(id){
+  if(catState[id]==='loading'||catState[id]==='loaded')return;
+  catState[id]='loading';
+  const body=document.querySelector('.cat-body[data-cat-id="'+id+'"]');
+  const cat=CATS.find(c=>c.id===id);
+  body.innerHTML=spinner('Loading '+cat.name.replace('&amp;','&')+' notices\u2026');
+  if(!document.getElementById('cat-'+id).classList.contains('open'))document.getElementById('cat-'+id).classList.add('open');
+  const notices=await api({type:'gazette',category:id,months:currentPeriod});
+  if(!notices){body.innerHTML='<div class="err-msg">Could not load notices.</div><button class="cat-load-btn" onclick="catState[\''+id+'\']=\'idle\';loadCategory(\''+id+'\')">Retry</button>';catState[id]='idle';return;}
+  if(notices.length===0){body.innerHTML='<div class="empty-msg">No notices returned.</div>';catState[id]='loaded';return;}
+  body.innerHTML=cardList(notices);
+  catState[id]='loaded';
 }
 
-async function loadCategory(id) {
-  if (catState[id] === 'loading' || catState[id] === 'loaded') return;
-  catState[id] = 'loading';
-  const body = document.querySelector('.cat-body[data-cat-id="' + id + '"]');
-  const cat = CATEGORIES.find(c => c.id === id);
-  body.innerHTML = spinner('Searching for ' + cat.name + ' gazettes from the ' + PERIOD_LABELS[currentPeriod] + '…');
-  const section = document.getElementById('cat-' + id);
-  if (!section.classList.contains('open')) section.classList.add('open');
-  const notices = await fetchNotices(id, currentPeriod);
-  if (!notices) {
-    body.innerHTML = '<div class="err-msg">Could not load notices. Please try again.</div>' +
-      '<button class="cat-load-btn" onclick="catState[\'' + id + '\']=\'idle\'; loadCategory(\'' + id + '\')">Retry</button>';
-    catState[id] = 'idle'; return;
-  }
-  if (notices.length === 0) {
-    body.innerHTML = '<div class="empty-msg">No significant notices found for this category and period.</div>';
-    catState[id] = 'loaded'; return;
-  }
-  body.innerHTML = cardList(notices);
-  catState[id] = 'loaded';
+function quickSearch(term){document.getElementById('srch-input').value=term;runSearch();}
+
+async function runSearch(){
+  const query=document.getElementById('srch-input').value.trim();
+  if(!query)return;
+  const resultsDiv=document.getElementById('srch-results');
+  const list=document.getElementById('srch-results-list');
+  document.getElementById('srch-results-title').textContent='Results for "'+query+'"';
+  resultsDiv.style.display='block';
+  list.innerHTML=spinner('Searching gazettes for "'+query+'"\u2026');
+  document.getElementById('search-section').scrollIntoView({behavior:'smooth',block:'start'});
+  const notices=await api({type:'search',query});
+  if(!notices){list.innerHTML='<div class="err-msg">Search failed. Please try again.</div>';return;}
+  if(notices.length===0){list.innerHTML='<div class="empty-msg">No notices found for "'+query+'". Try different keywords.</div>';return;}
+  list.innerHTML=cardList(notices);
 }
 
-// ── SEARCH ────────────────────────────────────────────────────────────────
-function quickSearch(term) {
-  document.getElementById('srch-input').value = term;
-  runSearch();
+function clearSearch(){document.getElementById('srch-results').style.display='none';document.getElementById('srch-results-list').innerHTML='';document.getElementById('srch-input').value='';}
+
+async function api(payload){
+  try{
+    const resp=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){console.error('API error',resp.status);return null;}
+    const data=await resp.json();
+    if(data.error){console.error('Error:',data.error);return null;}
+    return data.notices||[];
+  }catch(e){console.error('Fetch error:',e);return null;}
 }
 
-async function runSearch() {
-  const query = document.getElementById('srch-input').value.trim();
-  if (!query) return;
-  const resultsDiv = document.getElementById('srch-results');
-  const list = document.getElementById('srch-results-list');
-  const title = document.getElementById('srch-results-title');
-  resultsDiv.style.display = 'block';
-  title.textContent = 'Results for "' + query + '"';
-  list.innerHTML = spinner('Searching South African Government Gazettes for "' + query + '"…');
-  document.getElementById('search-section').scrollIntoView({ behavior:'smooth', block:'start' });
-  const notices = await fetchSearch(query);
-  if (!notices) {
-    list.innerHTML = '<div class="err-msg">Search failed. Please try again shortly.</div>'; return;
-  }
-  if (notices.length === 0) {
-    list.innerHTML = '<div class="empty-msg">No gazette notices found matching "' + query + '". Try different keywords.</div>'; return;
-  }
-  list.innerHTML = cardList(notices);
+async function apiExtract(payload){
+  const resp=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!resp.ok)throw new Error('Server error '+resp.status);
+  const data=await resp.json();
+  if(data.error)throw new Error(data.error);
+  return data.text||'';
 }
 
-function clearSearch() {
-  document.getElementById('srch-results').style.display = 'none';
-  document.getElementById('srch-results-list').innerHTML = '';
-  document.getElementById('srch-input').value = '';
-}
-
-// ── API CALLS — all go through the Netlify proxy ─────────────────────────
-function periodToDateRange(months) {
-  const now = new Date();
-  const from = new Date();
-  from.setMonth(from.getMonth() - months);
-  const fmt = d => d.toLocaleDateString('en-ZA', { month:'long', year:'numeric' });
-  return fmt(from) + ' to ' + fmt(now);
-}
-
-async function fetchNotices(categoryId, months) {
-  const cat = CATEGORIES.find(c => c.id === categoryId);
-  const dateRange = periodToDateRange(months);
-  const catDesc = cat
-    ? cat.name + ' (' + cat.hint + ')'
-    : 'all practitioner categories (Labour & Employment, B-BBEE, Regulations & Bills, Procurement & Tenders, Environment, Health & Medicines, Tax & Finance)';
-
-  const userMsg = `Search the web for South African Government Gazette notices published between ${dateRange} in the category: ${catDesc}.
-
-Focus on National Government Gazettes, Regulation Gazettes, and notices relevant to employers and HR practitioners in South Africa.
-
-Return ONLY a valid JSON array. No markdown. No backticks. No explanation.
-
-Each object must have exactly these fields:
-{ "title": "string", "gazette_no": "string or null", "date": "e.g. 15 March 2024", "summary": "2-3 sentences", "practitioner_note": "one sentence", "category": "labour|bbbee|regs|procurement|environment|health|tax" }
-
-Return up to 10 notices. Only include notices you have clear evidence for. If none, return [].`;
-
-  return await callProxy({ type: 'gazette', userMsg });
-}
-
-async function fetchSearch(query) {
-  const userMsg = `Search the web for South African Government Gazette notices matching: "${query}"
-
-Search across national, regulation, and provincial gazettes of South Africa.
-
-Return ONLY a valid JSON array. No markdown. No backticks. No explanation.
-
-Each object must have exactly these fields:
-{ "title": "string", "gazette_no": "string or null", "date": "string", "summary": "2-3 sentences", "practitioner_note": "one sentence", "category": "labour|bbbee|regs|procurement|environment|health|tax" }
-
-Return up to 8 notices. Only include verified results. If none, return [].`;
-
-  return await callProxy({ type: 'gazette', userMsg });
-}
-
-async function callProxy(payload) {
-  try {
-    const resp = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!resp.ok) { console.error('Proxy error', resp.status); return null; }
-    const data = await resp.json();
-    if (data.error) { console.error('Proxy returned error:', data.error); return null; }
-    return data.notices || [];
-  } catch (e) {
-    console.error('Fetch error:', e);
-    return null;
-  }
-}
-
-async function callProxyExtract(payload) {
-  try {
-    const resp = await fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!resp.ok) throw new Error('Server error ' + resp.status);
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    return data.text || '';
-  } catch (e) {
-    throw e;
-  }
-}
-
-// ── RENDER ────────────────────────────────────────────────────────────────
-function cardList(notices) {
-  const cards = notices.map(n => {
-    const isNew = isRecent(n.date, 3);
-    const ns = JSON.stringify(JSON.stringify(n));
-    return `<div class="gz-card" onclick="openModal(${ns})">
-      <div class="gz-top">
-        <div class="gz-title">${esc(n.title || 'Untitled notice')}</div>
-        <div class="gz-chips">
-          ${isNew ? '<span class="chip chip-new">New</span>' : ''}
-          ${n.date ? '<span class="chip chip-date">' + esc(n.date) + '</span>' : ''}
-          ${n.gazette_no ? '<span class="chip chip-no">No. ' + esc(n.gazette_no) + '</span>' : ''}
-        </div>
-      </div>
-      <div class="gz-summary">${esc(n.summary || '')}</div>
-      <div class="gz-footer">
-        <div class="gz-prac">${n.practitioner_note ? '📌 ' + esc(n.practitioner_note) : ''}</div>
-        <button class="btn-extract" onclick="event.stopPropagation();openModal(${ns})">Extract clauses →</button>
-      </div>
-    </div>`;
+function cardList(notices){
+  const cards=notices.map(n=>{
+    const ns=JSON.stringify(JSON.stringify(n));
+    return `<div class="gz-card" onclick="openModal(${ns})"><div class="gz-top"><div class="gz-title">${esc(n.title||'Untitled notice')}</div><div class="gz-chips">${n.date?'<span class="chip chip-date">'+esc(n.date)+'</span>':''}${n.gazette_no?'<span class="chip chip-no">No. '+esc(n.gazette_no)+'</span>':''}</div></div><div class="gz-summary">${esc(n.summary||'')}</div><div class="gz-footer"><div class="gz-prac">${n.practitioner_note?'&#x1F4CC; '+esc(n.practitioner_note):''}</div><button class="btn-extract" onclick="event.stopPropagation();openModal(${ns})">Extract clauses &#x2192;</button></div></div>`;
   }).join('');
-  return '<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden">' + cards + '</div>';
+  return '<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden">'+cards+'</div>';
 }
 
-function isRecent(dateStr, months) {
-  if (!dateStr) return false;
-  try {
-    const d = new Date(dateStr);
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - months);
-    return d > cutoff;
-  } catch { return false; }
-}
+function spinner(msg){return '<div class="spin-wrap"><div class="spinner"></div><div class="spin-label">'+esc(msg)+'</div></div>';}
+function esc(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-function spinner(msg) {
-  return '<div class="spin-wrap"><div class="spinner"></div><div class="spin-label">' + esc(msg) + '</div></div>';
-}
-
-function esc(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── MODAL ─────────────────────────────────────────────────────────────────
-function openModal(jsonStr) {
-  const n = JSON.parse(jsonStr);
-  currentGazette = n;
-  document.getElementById('modal-title').textContent = n.title || 'Gazette notice';
-  document.getElementById('modal-summary').textContent = n.summary || '';
-  document.getElementById('ctx-box').value = '';
-  document.querySelectorAll('.sector-chip').forEach(c => c.classList.remove('sel'));
-  document.getElementById('extract-out').className = 'extract-out';
-  document.getElementById('extract-out').textContent = '';
-  document.getElementById('act-row').style.display = 'none';
-  document.getElementById('btn-run').disabled = false;
-  document.getElementById('btn-run').textContent = 'Extract relevant clauses';
+function openModal(jsonStr){
+  const n=JSON.parse(jsonStr);currentGazette=n;
+  document.getElementById('modal-title').textContent=n.title||'Gazette notice';
+  document.getElementById('modal-summary').textContent=n.summary||'';
+  document.getElementById('ctx-box').value='';
+  document.querySelectorAll('.sector-chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('extract-out').className='extract-out';
+  document.getElementById('extract-out').textContent='';
+  document.getElementById('act-row').style.display='none';
+  document.getElementById('btn-run').disabled=false;
+  document.getElementById('btn-run').textContent='Extract relevant clauses';
   document.getElementById('overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  document.body.style.overflow='hidden';
 }
-
-function closeModal() {
-  document.getElementById('overlay').classList.remove('open');
-  document.body.style.overflow = '';
+function closeModal(){document.getElementById('overlay').classList.remove('open');document.body.style.overflow='';}
+function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
+function toggleSector(chip){chip.classList.toggle('sel');}
+function resetExtract(){
+  document.getElementById('extract-out').className='extract-out';
+  document.getElementById('extract-out').textContent='';
+  document.getElementById('act-row').style.display='none';
+  document.getElementById('btn-run').disabled=false;
+  document.getElementById('btn-run').textContent='Extract relevant clauses';
+  document.querySelectorAll('.sector-chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('ctx-box').value='';
 }
-
-function overlayClick(e) {
-  if (e.target === document.getElementById('overlay')) closeModal();
+async function runExtract(){
+  if(!currentGazette)return;
+  const sectors=Array.from(document.querySelectorAll('.sector-chip.sel')).map(c=>c.textContent).join(', ');
+  const context=document.getElementById('ctx-box').value.trim();
+  const btn=document.getElementById('btn-run');
+  const out=document.getElementById('extract-out');
+  btn.disabled=true;btn.textContent='Extracting\u2026';
+  out.className='extract-out';out.textContent='';
+  document.getElementById('act-row').style.display='none';
+  try{
+    const text=await apiExtract({type:'extract',title:currentGazette.title,summary:currentGazette.summary,date:currentGazette.date,sector:sectors||'general employer/HR practitioner',context});
+    out.textContent=text;out.className='extract-out show';
+    document.getElementById('act-row').style.display='flex';
+  }catch(e){out.textContent='Extraction failed: '+e.message;out.className='extract-out show';}
+  btn.disabled=false;btn.textContent='Extract relevant clauses';
 }
-
-function toggleSector(chip) { chip.classList.toggle('sel'); }
-
-function resetExtract() {
-  document.getElementById('extract-out').className = 'extract-out';
-  document.getElementById('extract-out').textContent = '';
-  document.getElementById('act-row').style.display = 'none';
-  document.getElementById('btn-run').disabled = false;
-  document.getElementById('btn-run').textContent = 'Extract relevant clauses';
-  document.querySelectorAll('.sector-chip').forEach(c => c.classList.remove('sel'));
-  document.getElementById('ctx-box').value = '';
-}
-
-async function runExtract() {
-  if (!currentGazette) return;
-  const sectors = Array.from(document.querySelectorAll('.sector-chip.sel')).map(c => c.textContent).join(', ');
-  const context = document.getElementById('ctx-box').value.trim();
-  const btn = document.getElementById('btn-run');
-  const out = document.getElementById('extract-out');
-  btn.disabled = true; btn.textContent = 'Extracting…';
-  out.className = 'extract-out'; out.textContent = '';
-  document.getElementById('act-row').style.display = 'none';
-
-  const sectorText = sectors || 'general employer / HR practitioner context';
-  const contextText = context ? '\n\nAdditional context: ' + context : '';
-
-  const prompt = `You are a South African labour law and HR practitioner specialist.
-
-Extract and rewrite clauses from this gazette notice tailored to the specified sector.
-
-GAZETTE NOTICE:
-Title: ${currentGazette.title}
-Date: ${currentGazette.date || 'unknown'}
-Summary: ${currentGazette.summary}
-
-SECTOR: ${sectorText}${contextText}
-
-Instructions:
-1. Identify the clauses most relevant to the specified sector.
-2. Rewrite them in plain, direct, practitioner-ready language.
-3. Include specific numbers, dates, thresholds, or deadlines where applicable.
-4. End with a short "What this means for you" paragraph addressed directly to a practitioner in that sector.
-5. Under 400 words. No bullet points. Short paragraphs with bold subheadings.
-6. If limited relevance, say so briefly and explain indirect implications.`;
-
-  try {
-    const text = await callProxyExtract({ type: 'extract', prompt });
-    out.textContent = text;
-    out.className = 'extract-out show';
-    document.getElementById('act-row').style.display = 'flex';
-  } catch (e) {
-    out.textContent = 'Extraction failed: ' + e.message;
-    out.className = 'extract-out show';
-  }
-  btn.disabled = false; btn.textContent = 'Extract relevant clauses';
-}
-
-function copyExtract() {
-  const text = document.getElementById('extract-out').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('.btn-copy');
-    btn.textContent = 'Copied ✓';
-    setTimeout(() => { btn.textContent = 'Copy to clipboard'; }, 2000);
+function copyExtract(){
+  navigator.clipboard.writeText(document.getElementById('extract-out').textContent).then(()=>{
+    const btn=document.querySelector('.btn-copy');btn.textContent='Copied \u2713';setTimeout(()=>{btn.textContent='Copy to clipboard';},2000);
   });
 }
 </script>
