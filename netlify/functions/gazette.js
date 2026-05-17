@@ -1,26 +1,16 @@
 // netlify/functions/gazette.js
-// Two-step approach: Step 1 uses web_search to find real notices.
-// Step 2 converts the search results into strict JSON.
+// Single Anthropic API call with web_search tool.
+// Handles mixed response (tool use + text) correctly.
 // Checks Supabase cache first (7 day TTL).
 
-const SEARCH_QUERIES = {
-  labour:      'South African Government Gazette labour employment wage determination {year} site:gpwonline.co.za OR site:gov.za',
-  tax:         'South African Government Gazette SARS tax treasury {year} site:gpwonline.co.za OR site:gov.za',
-  bbbee:       'South African Government Gazette B-BBEE transformation codes charter {year} site:gpwonline.co.za OR site:gov.za',
-  regs:        'South African Government Gazette Companies Act CIPC regulations {year} site:gpwonline.co.za OR site:gov.za',
-  procurement: 'South African Government Gazette procurement tender PFMA treasury {year} site:gpwonline.co.za OR site:gov.za',
-  environment: 'South African Government Gazette NEMA environment carbon {year} site:gpwonline.co.za OR site:gov.za',
-  health:      'South African Government Gazette OHS health NHI occupational {year} site:gpwonline.co.za OR site:gov.za',
-};
-
 const CATEGORY_DESC = {
-  labour:      'Labour and Employment (wages, CCMA, equity, sectoral determinations, UIF)',
-  tax:         'Tax and Revenue (SARS, VAT, customs, Treasury, income tax)',
-  bbbee:       'B-BBEE and Transformation (codes, charters, verification, DTI)',
-  regs:        'Company Regulations (Companies Act, CIPC, business licensing)',
-  procurement: 'Government Procurement (PFMA, SCM, preferential procurement)',
-  environment: 'Environment and Sustainability (NEMA, EIA, waste, carbon tax)',
-  health:      'Health and OHS (OHS Act, NHI, pharmaceuticals, workplace safety)',
+  labour:      'Labour and Employment: wage determinations, CCMA notices, employment equity, sectoral determinations, UIF',
+  tax:         'Tax and Revenue: SARS notices, VAT, customs, National Treasury, income tax amendments',
+  bbbee:       'B-BBEE and Transformation: codes of good practice, sector charters, verification, DTI notices',
+  regs:        'Company Regulations: Companies Act amendments, CIPC notices, business licensing, consumer protection',
+  procurement: 'Government Procurement: PFMA, supply chain management, preferential procurement, Treasury instructions',
+  environment: 'Environment and Sustainability: NEMA, environmental impact assessments, waste management, carbon tax',
+  health:      'Health and OHS: OHS Act, NHI notices, pharmaceutical regulations, workplace safety',
 };
 
 exports.handler = async (event) => {
@@ -30,116 +20,128 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json',
   };
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
 
-  let body;
-  try { body = JSON.parse(event.body || '{}'); }
-  catch { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
+  let reqBody;
+  try {
+    reqBody = JSON.parse(event.body || '{}');
+  } catch (e) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) };
+  }
 
-  const { category, months = 3 } = body;
-  if (!category || !SEARCH_QUERIES[category]) {
+  const category = reqBody.category;
+  const months = reqBody.months || 3;
+
+  if (!category || !CATEGORY_DESC[category]) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid category' }) };
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_ANON_KEY;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set' }) };
 
-  // Step 1: Check Supabase cache
+  if (!apiKey) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set' }) };
+  }
+
   if (supabaseUrl && supabaseKey) {
     try {
-      const cacheRes = await fetch(
-        supabaseUrl + '/rest/v1/gazette_cache?category=eq.' + encodeURIComponent(category) + '&months=eq.' + months + '&select=notices,updated_at',
-        { headers: { apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey } }
-      );
+      const cacheUrl = supabaseUrl + '/rest/v1/gazette_cache?category=eq.' + encodeURIComponent(category) + '&months=eq.' + months + '&select=notices,updated_at';
+      const cacheRes = await fetch(cacheUrl, {
+        headers: { apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey },
+      });
       if (cacheRes.ok) {
         const rows = await cacheRes.json();
-        if (rows && rows.length > 0) {
+        if (rows && rows.length > 0 && Array.isArray(rows[0].notices) && rows[0].notices.length > 0) {
           const ageHours = (Date.now() - new Date(rows[0].updated_at).getTime()) / 3600000;
-          if (ageHours < 168 && Array.isArray(rows[0].notices) && rows[0].notices.length > 0) {
+          if (ageHours < 168) {
             return { statusCode: 200, headers, body: JSON.stringify({ notices: rows[0].notices, cached: true }) };
           }
         }
       }
-    } catch (err) { console.error('Cache read:', err.message); }
+    } catch (cacheErr) {
+      console.error('Cache read error:', cacheErr.message);
+    }
   }
 
-  // Step 2: Web search via Anthropic to get raw gazette info
   const currentYear = new Date().getFullYear();
-  const searchQuery = SEARCH_QUERIES[category].replace('{year}', currentYear);
-  const monthsAgo = new Date(Date.now() - months * 30 * 24 * 3600000);
-  const dateStr = monthsAgo.toISOString().slice(0, 10);
+  const desc = CATEGORY_DESC[category];
 
-  let rawSearchContent = '';
-  try {
-    const searchRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
-        messages: [{
-          role: 'user',
-          content: 'Search for real South African Government Gazette notices about ' + CATEGORY_DESC[category] + ' published after ' + dateStr + '. Find gazette numbers, dates, and notice titles. Search: ' + searchQuery
-        }],
-      }),
-    });
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      rawSearchContent = (searchData.content || []).filter(b => b.type === 'text').map(b => b.text).join(' ');
-      console.log('Search content length:', rawSearchContent.length);
-    }
-  } catch (err) { console.error('Search step error:', err.message); }
+  const userPrompt = 'Search for real South African Government Gazette notices published in ' + currentYear + ' about: ' + desc + '. '
+    + 'Search gpwonline.co.za and gov.za. Find gazette numbers, publication dates, and notice titles from the last ' + months + ' months. '
+    + 'After searching, return ONLY a JSON array. No text before or after the JSON. '
+    + 'Each element: {"title":"...","gazette_no":"...","date":"...","summary":"2-3 sentences","practitioner_note":"1 sentence for employers","category":"' + category + '"}. '
+    + 'Return 6 to 8 notices. Start your response with [ and end with ].';
 
-  // Step 3: Convert to strict JSON
-  const jsonSystemMsg = 'You output ONLY a raw JSON array. No words before or after. Start with [ end with ]. Each element must have exactly these fields: title, gazette_no, date, summary, practitioner_note, category. Use real gazette data from the search results provided. If search results are sparse, supplement with your knowledge of recent SA gazettes in this category.';
-  const jsonUserMsg = (rawSearchContent
-    ? 'Using these search results about SA Government Gazettes:
-
-' + rawSearchContent.slice(0, 3000) + '
-
-'
-    : '') +
-    'Create a JSON array of 8 South African Government Gazette notices about ' + CATEGORY_DESC[category] + ' from the last ' + months + ' months (after ' + dateStr + '). Respond with ONLY the JSON array, nothing else.';
+  const systemPrompt = 'You are a South African government gazette analyst. '
+    + 'You use web search to find real gazette notices. '
+    + 'After searching, you output ONLY a valid JSON array starting with [ and ending with ]. '
+    + 'No markdown, no backticks, no explanation text. Just the raw JSON array.';
 
   let notices = [];
   try {
-    const jsonRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 3000,
-        system: jsonSystemMsg,
-        messages: [{ role: 'user', content: jsonUserMsg }],
+        system: systemPrompt,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+        messages: [{ role: 'user', content: userPrompt }],
       }),
     });
-    if (!jsonRes.ok) throw new Error('JSON step HTTP ' + jsonRes.status);
-    const jsonData = await jsonRes.json();
-    const rawText = (jsonData.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
-    console.log('JSON response preview:', rawText.slice(0, 150));
-    const startIdx = rawText.indexOf('[');
-    const endIdx = rawText.lastIndexOf(']');
-    if (startIdx === -1 || endIdx === -1) throw new Error('No JSON array found: ' + rawText.slice(0, 100));
-    notices = JSON.parse(rawText.slice(startIdx, endIdx + 1));
-    if (!Array.isArray(notices)) notices = [];
-  } catch (err) {
-    console.error('JSON step error:', err.message);
-    return { statusCode: 502, headers, body: JSON.stringify({ error: 'Failed to format notices: ' + err.message }) };
+
+    if (!aiRes.ok) {
+      const errBody = await aiRes.text();
+      throw new Error('Anthropic HTTP ' + aiRes.status + ': ' + errBody.slice(0, 200));
+    }
+
+    const aiData = await aiRes.json();
+    const textParts = (aiData.content || [])
+      .filter(function(b) { return b.type === 'text'; })
+      .map(function(b) { return b.text; })
+      .join('');
+
+    console.log('Response preview:', textParts.slice(0, 200));
+
+    const startIdx = textParts.indexOf('[');
+    const endIdx = textParts.lastIndexOf(']');
+
+    if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+      throw new Error('No JSON array found. Got: ' + textParts.slice(0, 150));
+    }
+
+    const parsed = JSON.parse(textParts.slice(startIdx, endIdx + 1));
+    notices = Array.isArray(parsed) ? parsed : [];
+
+  } catch (aiErr) {
+    console.error('AI error:', aiErr.message);
+    return { statusCode: 502, headers, body: JSON.stringify({ error: 'Failed to fetch notices: ' + aiErr.message }) };
   }
 
-  // Step 4: Cache in Supabase
   if (supabaseUrl && supabaseKey && notices.length > 0) {
     try {
       await fetch(supabaseUrl + '/rest/v1/gazette_cache', {
         method: 'POST',
-        headers: { apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ category, months, notices, updated_at: new Date().toISOString() }),
+        headers: {
+          apikey: supabaseKey,
+          Authorization: 'Bearer ' + supabaseKey,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({ category: category, months: months, notices: notices, updated_at: new Date().toISOString() }),
       });
-    } catch (err) { console.error('Cache write:', err.message); }
+    } catch (writeErr) {
+      console.error('Cache write error:', writeErr.message);
+    }
   }
 
-  return { statusCode: 200, headers, body: JSON.stringify({ notices, cached: false }) };
+  return { statusCode: 200, headers, body: JSON.stringify({ notices: notices, cached: false }) };
 };
