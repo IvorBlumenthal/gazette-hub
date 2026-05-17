@@ -1,358 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>SA Gazette Intelligence Hub | ArkKonsult</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA Gazette Hub — ArkKonsult</title>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#1a2744;--navy-mid:#253459;--gold:#c9922a;--gold-hover:#b5821f;--gold-pale:#fdf6e8;--cream:#faf8f3;--cream-dark:#f0ece0;--white:#fff;--text:#1a2744;--text-mid:#445070;--text-light:#7a82a0;--border:rgba(26,39,68,.10);--border-mid:rgba(26,39,68,.20);--r:8px;--rlg:14px;--rxl:20px}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;font-weight:300}
-.hdr{background:var(--navy);padding:0 2.5rem;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,.06)}
-.hdr-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;height:66px;gap:1.5rem}
-.brand{display:flex;align-items:center;gap:12px;text-decoration:none}
-.brand-mark{width:36px;height:36px;background:var(--gold);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:#fff}
-.brand-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:500;color:#fff;white-space:nowrap}
-.brand-sub{font-size:11px;color:rgba(255,255,255,.38);margin-top:1px}
-main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
-.period-bar{display:flex;align-items:center;gap:10px;margin-bottom:2.5rem;flex-wrap:wrap}
-.period-label{font-size:12px;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0}
-.pbtn{padding:8px 20px;background:var(--white);border:1px solid var(--border-mid);border-radius:30px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text-mid);cursor:pointer;transition:all .15s;white-space:nowrap}
-.pbtn:hover{border-color:var(--gold);color:var(--navy)}
-.pbtn.active{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:500}
-.pbtn.featured{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:500}
-.pbtn.featured.active{background:var(--navy);border-color:var(--navy)}
-
-.divider{border:none;border-top:1px solid var(--border);margin:2.5rem 0}
-.search-section{margin-bottom:3rem}
-.section-hd h2{font-family:'Playfair Display',serif;font-size:1.45rem;font-weight:500;color:var(--navy);margin-bottom:.5rem}
-.section-desc{font-size:13px;color:var(--text-light);margin-bottom:1.25rem;line-height:1.55}
-.search-box-wrap{display:flex;gap:10px;margin-bottom:1rem}
-.search-box-wrap input{flex:1;padding:13px 18px;font-size:15px;font-family:'DM Sans',sans-serif;font-weight:300;border:1.5px solid var(--border-mid);border-radius:var(--rlg);background:var(--white);color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s}
-.search-box-wrap input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,146,42,.12)}
-.search-box-wrap input::placeholder{color:var(--text-light)}
-.btn-search-main{padding:13px 30px;background:var(--gold);border:none;border-radius:var(--rlg);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:#fff;cursor:pointer;transition:background .15s;flex-shrink:0}
-.btn-search-main:hover{background:var(--gold-hover)}
-.sugg-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem}
-.sugg-label{font-size:12px;color:var(--text-light);flex-shrink:0}
-.sugg-pill{padding:5px 13px;background:var(--white);border:1px solid var(--border-mid);border-radius:20px;font-size:12px;color:var(--text-mid);cursor:pointer;transition:all .15s;white-space:nowrap}
-.sugg-pill:hover{background:var(--gold-pale);border-color:var(--gold);color:var(--navy)}
-#srch-results{display:none}
-.srch-results-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px}
-.srch-results-hd h3{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:500;color:var(--navy)}
-.btn-clear{background:none;border:1px solid var(--border-mid);border-radius:var(--r);padding:6px 14px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-light);cursor:pointer;transition:all .15s}
-.btn-clear:hover{background:var(--cream-dark);color:var(--text)}
-.lib-heading{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1.5rem}
-.cat-section{margin-bottom:1rem}
-.cat-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:var(--navy);border-radius:var(--rlg);cursor:pointer;user-select:none;transition:background .15s}
-.cat-section.open .cat-header{border-radius:var(--rlg) var(--rlg) 0 0}
-.cat-header:hover{background:var(--navy-mid)}
-.cat-hd-left{display:flex;align-items:center;gap:13px}
-.cat-icon{width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.cat-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:500;color:#fff}
-.cat-hint{font-size:12px;color:rgba(255,255,255,.40);margin-top:2px}
-.cat-chevron{font-size:18px;color:rgba(255,255,255,.45);transition:transform .25s;flex-shrink:0}
-.cat-section.open .cat-chevron{transform:rotate(90deg)}
-.cat-body{display:none;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--rlg) var(--rlg);background:var(--white);overflow:hidden}
-.cat-section.open .cat-body{display:block}
-.cat-load-btn{width:100%;padding:1.1rem;background:none;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:var(--gold);cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
-.cat-load-btn:hover{background:var(--gold-pale)}
-.gz-card{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);transition:background .12s;cursor:pointer}
-.gz-card:last-child{border-bottom:none}
-.gz-card:hover{background:var(--cream)}
-.gz-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:7px}
-.gz-title{font-family:'Playfair Display',serif;font-size:14.5px;font-weight:500;color:var(--navy);line-height:1.4;flex:1}
-.gz-chips{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
-.chip{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap}
-.chip-date{background:var(--cream-dark);color:var(--text-light)}
-.chip-no{background:#e8edf8;color:var(--navy-mid);border:1px solid #c5cee8}
-.gz-summary{font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:10px}
-.gz-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.gz-prac{font-size:12px;color:var(--text-light);font-style:italic;flex:1;line-height:1.5}
-.btn-extract{padding:6px 15px;background:transparent;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--navy-mid);cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
-.btn-extract:hover{background:var(--navy);border-color:var(--navy);color:#fff}
-.spin-wrap{padding:2rem;text-align:center}
-.spinner{width:26px;height:26px;border:2px solid var(--border-mid);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto .75rem}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1A2E3B;--navy-mid:#2C4A5C;--navy-light:#3D6275;
+  --gold:#C9922A;--gold-light:#F5E8CE;
+  --cream:#FAF8F3;--sand:#EDE8DF;
+  --text:#2C2C2C;--text-mid:#5A5A5A;--text-soft:#8A8A8A;
+  --green:#2E7D52;--green-light:#E8F5ED;
+  --red:#C0392B;--red-light:#FDECEA;
+  --border:#DDD8CF;
+  --radius:10px;--radius-lg:16px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
+a{color:inherit;text-decoration:none;}
+header{background:var(--navy);color:#fff;padding:0 32px;}
+.hdr-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px;}
+.hdr-brand{font-size:1.1rem;font-weight:700;letter-spacing:.5px;}
+.hdr-brand span{color:var(--gold);}
+.hdr-sub{font-size:.78rem;color:#aaa;margin-top:2px;}
+.hdr-badge{background:var(--gold);color:var(--navy);font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px;}
+.period-bar{background:var(--navy-mid);padding:10px 32px;}
+.period-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:8px;}
+.period-label{font-size:.78rem;color:#ccc;margin-right:4px;}
+.pbtn{background:transparent;border:1px solid rgba(255,255,255,.25);color:#ddd;font-size:.78rem;padding:5px 14px;border-radius:20px;cursor:pointer;transition:all .2s;}
+.pbtn:hover{border-color:var(--gold);color:var(--gold);}
+.pbtn.active{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:700;}
+.search-bar{background:#fff;border-bottom:1px solid var(--border);padding:14px 32px;}
+.search-inner{max-width:1100px;margin:0 auto;display:flex;gap:10px;}
+#srch-input{flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:.9rem;outline:none;transition:border-color .2s;}
+#srch-input:focus{border-color:var(--gold);}
+#srch-btn{background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:10px 22px;font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+#srch-btn:hover{background:var(--navy-mid);}
+.main{max-width:1100px;margin:0 auto;padding:28px 32px;}
+#search-results-section{margin-bottom:24px;display:none;}
+.sr-heading{font-size:1rem;font-weight:700;margin-bottom:14px;color:var(--navy);}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:720px){.cat-grid{grid-template-columns:1fr;}}
+.cat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+.cat-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:var(--navy);color:#fff;user-select:none;}
+.cat-header:hover{background:var(--navy-mid);}
+.cat-title{font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+.cat-icon{font-size:1rem;}
+.cat-toggle{font-size:.85rem;opacity:.7;transition:transform .2s;}
+.cat-toggle.open{transform:rotate(180deg);}
+.cat-body{padding:16px;min-height:60px;display:none;}
+.cat-body.open{display:block;}
+.cat-load-btn{display:block;width:100%;background:var(--gold-light);border:1px solid var(--gold);color:var(--navy);border-radius:var(--radius);padding:12px;font-size:.88rem;font-weight:600;cursor:pointer;text-align:center;}
+.cat-load-btn:hover{background:var(--gold);color:#fff;}
+.notice-card{border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;background:#fff;transition:box-shadow .2s;}
+.notice-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);}
+.notice-card:last-child{margin-bottom:0;}
+.notice-title{font-size:.9rem;font-weight:700;color:var(--navy);margin-bottom:6px;line-height:1.35;}
+.notice-meta{font-size:.75rem;color:var(--text-soft);margin-bottom:8px;display:flex;gap:12px;flex-wrap:wrap;}
+.notice-meta .gaz-no{color:var(--gold);font-weight:600;}
+.notice-summary{font-size:.83rem;color:var(--text-mid);line-height:1.6;margin-bottom:8px;}
+.notice-note{font-size:.78rem;background:var(--green-light);color:var(--green);border-left:3px solid var(--green);padding:6px 10px;border-radius:0 var(--radius) var(--radius) 0;}
+.spinner{text-align:center;padding:28px;color:var(--text-soft);font-size:.88rem;}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
 @keyframes spin{to{transform:rotate(360deg)}}
-.spin-label{font-size:13px;color:var(--text-light)}
-.empty-msg{padding:2rem 1.5rem;text-align:center;color:var(--text-light);font-size:14px;line-height:1.65}
-.err-msg{margin:.75rem 1.5rem 1rem;padding:1rem 1.25rem;background:#fef2f2;border-radius:var(--r);color:#a33;font-size:13px;line-height:1.5}
-.overlay{display:none;position:fixed;inset:0;background:rgba(10,18,40,.65);z-index:200;align-items:center;justify-content:center;padding:1.5rem}
-.overlay.open{display:flex}
-.modal{background:var(--white);border-radius:var(--rxl);width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(10,18,40,.35);animation:mIn .2s ease}
-@keyframes mIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-.modal-hdr{padding:1.5rem 1.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.modal-title{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:500;color:var(--navy);line-height:1.4}
-.modal-close{background:none;border:none;font-size:24px;color:var(--text-light);cursor:pointer;flex-shrink:0;line-height:1;transition:color .15s;padding:0 2px}
-.modal-close:hover{color:var(--navy)}
-.modal-body{padding:1.5rem 1.75rem}
-.mlabel{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:var(--text-light);margin-bottom:8px}
-.msummary{font-size:14px;color:var(--text-mid);line-height:1.7;margin-bottom:1.5rem;padding:1rem 1.25rem;background:var(--cream);border-radius:var(--r);border-left:3px solid var(--gold)}
-.sector-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:1rem}
-.sector-chip{padding:8px 12px;background:var(--cream);border:1px solid var(--border-mid);border-radius:var(--r);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--text-mid);cursor:pointer;transition:all .15s;text-align:center;user-select:none}
-.sector-chip:hover{background:var(--cream-dark)}
-.sector-chip.sel{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:500}
-.ctx-box{width:100%;padding:10px 13px;font-size:13px;font-family:'DM Sans',sans-serif;font-weight:300;border:1px solid var(--border-mid);border-radius:var(--r);outline:none;resize:vertical;min-height:68px;color:var(--text);transition:border-color .15s;margin-bottom:1.25rem;line-height:1.6}
-.ctx-box:focus{border-color:var(--gold)}
-.ctx-box::placeholder{color:var(--text-light)}
-.btn-run{width:100%;padding:12px;background:var(--gold);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:#fff;cursor:pointer;transition:background .15s;margin-bottom:1rem}
-.btn-run:hover{background:var(--gold-hover)}
-.btn-run:disabled{background:#ccc;cursor:not-allowed}
-.extract-out{display:none;padding:1.25rem;background:var(--cream);border-radius:var(--r);border:1px solid var(--border);font-size:14px;color:var(--text-mid);line-height:1.8;white-space:pre-wrap;word-wrap:break-word;margin-bottom:.75rem}
-.extract-out.show{display:block}
-.act-row{display:flex;gap:8px;flex-wrap:wrap}
-.btn-copy{padding:7px 16px;background:var(--navy);border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:#fff;cursor:pointer;transition:background .15s}
-.btn-copy:hover{background:var(--navy-mid)}
-.btn-again{padding:7px 16px;background:transparent;border:1px solid var(--border-mid);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);cursor:pointer;transition:all .15s}
-.btn-again:hover{background:var(--cream-dark)}
-@media(max-width:720px){.hdr{padding:0 1.25rem}.hdr-inner{flex-wrap:wrap;height:auto;padding:.75rem 0}main{padding:1.5rem 1.25rem 4rem}.gz-top{flex-direction:column;gap:5px}.gz-chips{justify-content:flex-start}.sector-grid{grid-template-columns:1fr 1fr}.search-box-wrap{flex-direction:column}.btn-search-main{width:100%}}
+.err-msg{background:var(--red-light);color:var(--red);border-radius:var(--radius);padding:12px 16px;font-size:.85rem;}
+.empty-msg{color:var(--text-soft);font-size:.85rem;padding:12px 0;text-align:center;}
+.cache-badge{display:inline-block;background:var(--green-light);color:var(--green);font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle;}
+footer{background:var(--navy);color:#aaa;text-align:center;padding:20px 32px;font-size:.78rem;margin-top:40px;}
+footer a{color:var(--gold);}
 </style>
 </head>
 <body>
-<header class="hdr">
+<header>
   <div class="hdr-inner">
-    <a class="brand" href="#">
-      <div class="brand-mark">A</div>
-      <div><div class="brand-name">SA Gazette Intelligence Hub</div><div class="brand-sub">ArkKonsult &middot; Labour &amp; HR Practitioner Edition</div></div>
-    </a>
+    <div>
+      <div class="hdr-brand"><span>SA</span> Gazette Hub</div>
+      <div class="hdr-sub">South African Government Gazette Intelligence · ArkKonsult</div>
+    </div>
+    <div class="hdr-badge">EMPLOYER-SIDE ADVISORY</div>
   </div>
 </header>
-<main>
-  <div class="period-bar">
-    <span class="period-label">Show gazettes from</span>
-    <button class="pbtn featured active" data-months="3" onclick="setPeriod(this)">Last 3 months</button>
-    <button class="pbtn" data-months="6" onclick="setPeriod(this)">Last 6 months</button>
-    <button class="pbtn" data-months="12" onclick="setPeriod(this)">Last 12 months</button>
-    <button class="pbtn" data-months="24" onclick="setPeriod(this)">Last 24 months</button>
-  </div>
-
-  <section class="search-section" id="search-section">
-    <div class="section-hd"><h2>Search all gazettes</h2></div>
-    <p class="section-desc">Search across all South African Government Gazette notices by keyword, Act name, department, topic, or gazette number.</p>
-    <div class="search-box-wrap">
-      <input type="text" id="srch-input" placeholder="e.g. National Minimum Wage, CCMA, SARS VAT, bargaining council, BCEA amendment&hellip;"/>
-      <button class="btn-search-main" onclick="runSearch()">Search gazettes</button>
-    </div>
-    <div class="sugg-row">
-      <span class="sugg-label">Try:</span>
-      <span class="sugg-pill" onclick="quickSearch('National Minimum Wage')">National Minimum Wage</span>
-      <span class="sugg-pill" onclick="quickSearch('CCMA rules')">CCMA rules</span>
-      <span class="sugg-pill" onclick="quickSearch('B-BBEE codes')">B-BBEE codes</span>
-      <span class="sugg-pill" onclick="quickSearch('SARS tax rates')">SARS tax rates</span>
-      <span class="sugg-pill" onclick="quickSearch('Employment Equity')">Employment Equity</span>
-      <span class="sugg-pill" onclick="quickSearch('bargaining council')">Bargaining council</span>
-      <span class="sugg-pill" onclick="quickSearch('UIF amendments')">UIF amendments</span>
-      <span class="sugg-pill" onclick="quickSearch('NHI regulations')">NHI regulations</span>
-    </div>
-    <div id="srch-results">
-      <div class="srch-results-hd">
-        <h3 id="srch-results-title">Results</h3>
-        <button class="btn-clear" onclick="clearSearch()">&#10005; Clear</button>
-      </div>
-      <div id="srch-results-list"></div>
-    </div>
-  </section>
-  <hr class="divider"/>
-  <p class="lib-heading">Curated library &mdash; by category</p>
-  <div id="cat-container"></div>
-</main>
-<div class="overlay" id="overlay" onclick="overlayClick(event)">
-  <div class="modal" id="modal">
-    <div class="modal-hdr">
-      <div class="modal-title" id="modal-title">Gazette notice</div>
-      <button class="modal-close" onclick="closeModal()">&#215;</button>
-    </div>
-    <div class="modal-body">
-      <p class="mlabel">Summary</p>
-      <div class="msummary" id="modal-summary"></div>
-      <p class="mlabel" style="margin-bottom:8px;">Extract clauses relevant to my sector</p>
-      <div class="sector-grid">
-        <div class="sector-chip" onclick="toggleSector(this)">Manufacturing</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Mining &amp; Resources</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Retail &amp; FMCG</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Financial Services</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Construction</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Healthcare</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Agriculture</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Transport &amp; Logistics</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Education</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Hospitality</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Professional Services</div>
-        <div class="sector-chip" onclick="toggleSector(this)">Public Sector</div>
-      </div>
-      <textarea class="ctx-box" id="ctx-box" placeholder="Optional: add specific context &mdash; e.g. 'We employ 45 staff in a bargaining council environment'&hellip;"></textarea>
-      <button class="btn-run" id="btn-run" onclick="runExtract()">Extract relevant clauses</button>
-      <div class="extract-out" id="extract-out"></div>
-      <div class="act-row" id="act-row" style="display:none">
-        <button class="btn-copy" onclick="copyExtract()">Copy to clipboard</button>
-        <button class="btn-again" onclick="resetExtract()">Extract again with different context</button>
-      </div>
-    </div>
+<div class="period-bar">
+  <div class="period-inner">
+    <span class="period-label">Period:</span>
+    <button class="pbtn" data-months="1" onclick="setPeriod(this)">1 month</button>
+    <button class="pbtn active" data-months="3" onclick="setPeriod(this)">3 months</button>
+    <button class="pbtn" data-months="6" onclick="setPeriod(this)">6 months</button>
   </div>
 </div>
+<div class="search-bar">
+  <div class="search-inner">
+    <input id="srch-input" type="text" placeholder="Search gazette notices — e.g. minimum wage, employment equity, B-BBEE codes…" />
+    <button id="srch-btn" onclick="runSearch()">Search</button>
+  </div>
+</div>
+<div class="main">
+  <div id="search-results-section">
+    <div class="sr-heading" id="sr-heading">Search results</div>
+    <div id="search-results-body"></div>
+  </div>
+  <div class="cat-grid" id="cat-grid"></div>
+</div>
+<footer>
+  <a href="https://arkkonsult.co.za" target="_blank">arkkonsult.co.za</a> &nbsp;|&nbsp;
+  ivorb@arkkonsult.com &nbsp;|&nbsp; +27 82 880 5316 &nbsp;|&nbsp;
+  &copy; 2025 ArkKonsult PTY Limited. All rights reserved.
+</footer>
 <script>
-const API = '/.netlify/functions/gazette';
-const CATS = [
-  {id:'labour',icon:'&#x2696;&#xFE0F;',name:'Labour &amp; Employment',hint:'Wages, conditions, CCMA, bargaining councils, LRA, BCEA'},
-  {id:'bbbee',icon:'&#x1F91D;',name:'B-BBEE',hint:'Codes of Good Practice, sector charters, verification'},
-  {id:'regs',icon:'&#x1F4CB;',name:'Regulations &amp; Bills',hint:'New legislation, amendments, Bills before Parliament'},
-  {id:'procurement',icon:'&#x1F3DB;&#xFE0F;',name:'Procurement &amp; Tenders',hint:'PFMA, public contracts, preferential procurement'},
-  {id:'environment',icon:'&#x1F33F;',name:'Environment',hint:'NEMA, climate, conservation, environmental compliance'},
-  {id:'health',icon:'&#x1F3E5;',name:'Health &amp; Medicines',hint:'NHI, SAHPRA, regulations, medicines control'},
-  {id:'tax',icon:'&#x1F4CA;',name:'Tax &amp; Finance',hint:'SARS, VAT, income tax, National Treasury notices'},
+const CATEGORIES = [
+  { id:'labour',      icon:'⚖️', label:'Labour & Employment' },
+  { id:'tax',         icon:'🏛️', label:'Tax & Revenue' },
+  { id:'bbbee',       icon:'🤝', label:'B-BBEE & Transformation' },
+  { id:'regs',        icon:'📋', label:'Company Regulations' },
+  { id:'procurement', icon:'🏗️', label:'Government Procurement' },
+  { id:'environment', icon:'🌿', label:'Environment & Sustainability' },
+  { id:'health',      icon:'🏥', label:'Health & OHS' },
 ];
-const CAT_LABELS={labour:'Labour & Employment',bbbee:'B-BBEE',regs:'Regulations & Bills',procurement:'Procurement & Tenders',environment:'Environment',health:'Health & Medicines',tax:'Tax & Finance',all:'General'};
-const PERIOD_LABELS={3:'last 3 months',6:'last 6 months',12:'last 12 months',24:'last 24 months'};
-let currentPeriod=3,currentGazette=null;
-const catState={};
-
-window.addEventListener('DOMContentLoaded',()=>{
-  buildCategories();
-  document.getElementById('srch-input').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
-  // Auto-load first two categories on page load
-  setTimeout(()=>{ loadCategory('labour'); },300);
-  setTimeout(()=>{ loadCategory('tax'); },500);
-});
-
-function setPeriod(btn){
-  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));
+const PERIOD_LABELS = { 1:'last month', 3:'last 3 months', 6:'last 6 months' };
+let currentPeriod = 3;
+const catState = {};
+function buildCategories() {
+  const grid = document.getElementById('cat-grid');
+  CATEGORIES.forEach(cat => {
+    catState[cat.id] = 'idle';
+    const card = document.createElement('div');
+    card.className = 'cat-card';
+    card.innerHTML = `
+      <div class="cat-header" onclick="toggleCat('${cat.id}')">
+        <div class="cat-title"><span class="cat-icon">${cat.icon}</span>${cat.label}</div>
+        <span class="cat-toggle" id="toggle-${cat.id}">▼</span>
+      </div>
+      <div class="cat-body" id="body-${cat.id}" data-cat-id="${cat.id}">
+        <button class="cat-load-btn" onclick="loadCategory('${cat.id}')">&#8595; Load ${PERIOD_LABELS[currentPeriod]} notices</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+function toggleCat(id) {
+  const body = document.getElementById('body-'+id);
+  const toggle = document.getElementById('toggle-'+id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.classList.toggle('open', !isOpen);
+  if (!isOpen && catState[id] === 'idle') loadCategory(id);
+}
+function setPeriod(btn) {
+  document.querySelectorAll('.pbtn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  currentPeriod=parseInt(btn.dataset.months);
-  Object.keys(catState).forEach(id=>{catState[id]='idle';});
-  document.querySelectorAll('.cat-body').forEach(body=>{
-    body.innerHTML='<button class="cat-load-btn" onclick="loadCategory(\''+body.dataset.catId+'\')">&#8595;&nbsp; Load '+PERIOD_LABELS[currentPeriod]+' notices</button>';
-  });
-  // Reload the two auto-open categories
-  setTimeout(()=>{ loadCategory('labour'); },300);
-  setTimeout(()=>{ loadCategory('tax'); },500);
-}
-
-function buildCategories(){
-  const container=document.getElementById('cat-container');
-  CATS.forEach(cat=>{
-    catState[cat.id]='idle';
-    const section=document.createElement('div');
-    section.className='cat-section';
-    section.id='cat-'+cat.id;
-    section.innerHTML=`<div class="cat-header" onclick="toggleCat('${cat.id}')"><div class="cat-hd-left"><div class="cat-icon">${cat.icon}</div><div><div class="cat-name">${cat.name}</div><div class="cat-hint">${cat.hint}</div></div></div><div class="cat-chevron">&#x203A;</div></div><div class="cat-body" data-cat-id="${cat.id}"><button class="cat-load-btn" onclick="loadCategory('${cat.id}')">&#8595;&nbsp; Load ${PERIOD_LABELS[currentPeriod]} notices</button></div>`;
-    container.appendChild(section);
+  currentPeriod = parseInt(btn.dataset.months);
+  CATEGORIES.forEach(cat => {
+    catState[cat.id] = 'idle';
+    const body = document.getElementById('body-'+cat.id);
+    body.innerHTML = `<button class="cat-load-btn" onclick="loadCategory('${cat.id}')">&#8595; Load ${PERIOD_LABELS[currentPeriod]} notices</button>`;
+    if (body.classList.contains('open')) loadCategory(cat.id);
   });
 }
-
-function toggleCat(id){document.getElementById('cat-'+id).classList.toggle('open');}
-
-async function loadCategory(id){
-  if(catState[id]==='loading'||catState[id]==='loaded')return;
-  catState[id]='loading';
-  const body=document.querySelector('.cat-body[data-cat-id="'+id+'"]');
-  const cat=CATS.find(c=>c.id===id);
-  body.innerHTML=spinner('Loading '+cat.name.replace('&amp;','&')+' notices\u2026');
-  if(!document.getElementById('cat-'+id).classList.contains('open'))document.getElementById('cat-'+id).classList.add('open');
-  const notices=await api({type:'gazette',category:id,months:currentPeriod});
-  if(!notices){body.innerHTML='<div class="err-msg">Could not load notices.</div><button class="cat-load-btn" onclick="catState[\''+id+'\']=\'idle\';loadCategory(\''+id+'\')">Retry</button>';catState[id]='idle';return;}
-  if(notices.length===0){body.innerHTML='<div class="empty-msg">No notices returned.</div>';catState[id]='loaded';return;}
-  body.innerHTML=cardList(notices);
-  catState[id]='loaded';
+async function loadCategory(id) {
+  if (catState[id] === 'loading' || catState[id] === 'loaded') return;
+  catState[id] = 'loading';
+  const body = document.getElementById('body-'+id);
+  const toggle = document.getElementById('toggle-'+id);
+  body.classList.add('open');
+  toggle.classList.add('open');
+  body.innerHTML = spinner('Loading gazette notices…');
+  const result = await apiFetch({ category: id, months: currentPeriod });
+  if (!result) {
+    catState[id] = 'idle';
+    body.innerHTML = `<div class="err-msg">Could not load notices. <button class="cat-load-btn" style="margin-top:10px" onclick="retryLoad('${id}')">&#8634; Try again</button></div>`;
+    return;
+  }
+  catState[id] = 'loaded';
+  const cached = result.cached ? '<span class="cache-badge">cached</span>' : '';
+  body.innerHTML = `<div style="margin-bottom:10px;font-size:.78rem;color:var(--text-soft)">${result.notices.length} notices · ${PERIOD_LABELS[currentPeriod]} ${cached}</div>` + renderNotices(result.notices);
 }
-
-function quickSearch(term){document.getElementById('srch-input').value=term;runSearch();}
-
-async function runSearch(){
-  const query=document.getElementById('srch-input').value.trim();
-  if(!query)return;
-  const resultsDiv=document.getElementById('srch-results');
-  const list=document.getElementById('srch-results-list');
-  document.getElementById('srch-results-title').textContent='Results for "'+query+'"';
-  resultsDiv.style.display='block';
-  list.innerHTML=spinner('Searching gazettes for "'+query+'"\u2026');
-  document.getElementById('search-section').scrollIntoView({behavior:'smooth',block:'start'});
-  const notices=await api({type:'search',query});
-  if(!notices){list.innerHTML='<div class="err-msg">Search failed. Please try again.</div>';return;}
-  if(notices.length===0){list.innerHTML='<div class="empty-msg">No notices found for "'+query+'". Try different keywords.</div>';return;}
-  list.innerHTML=cardList(notices);
+function retryLoad(id) { catState[id] = 'idle'; loadCategory(id); }
+async function runSearch() {
+  const q = document.getElementById('srch-input').value.trim();
+  if (!q) return;
+  const section = document.getElementById('search-results-section');
+  const body = document.getElementById('search-results-body');
+  const heading = document.getElementById('sr-heading');
+  section.style.display = 'block';
+  heading.textContent = `Searching for "${q}"…`;
+  body.innerHTML = spinner('Searching gazette notices…');
+  const result = await apiFetch({ search: q, months: currentPeriod });
+  if (!result) { body.innerHTML = '<div class="err-msg">Search failed. Please try again.</div>'; heading.textContent = 'Search failed'; return; }
+  heading.textContent = `${result.notices.length} result${result.notices.length !== 1 ? 's' : ''} for "${q}"`;
+  body.innerHTML = result.notices.length > 0 ? renderNotices(result.notices) : '<div class="empty-msg">No notices found. Try different keywords.</div>';
 }
-
-function clearSearch(){document.getElementById('srch-results').style.display='none';document.getElementById('srch-results-list').innerHTML='';document.getElementById('srch-input').value='';}
-
-async function api(payload){
-  try{
-    const resp=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){console.error('API error',resp.status);return null;}
-    const data=await resp.json();
-    if(data.error){console.error('Error:',data.error);return null;}
-    return data.notices||[];
-  }catch(e){console.error('Fetch error:',e);return null;}
+async function apiFetch(payload) {
+  try {
+    const res = await fetch('/.netlify/functions/gazette', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (err) { console.error('API error:', err); return null; }
 }
-
-async function apiExtract(payload){
-  const resp=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!resp.ok)throw new Error('Server error '+resp.status);
-  const data=await resp.json();
-  if(data.error)throw new Error(data.error);
-  return data.text||'';
+function renderNotices(notices) {
+  if (!notices || notices.length === 0) return '<div class="empty-msg">No notices for this period.</div>';
+  return notices.map(n => `
+    <div class="notice-card">
+      <div class="notice-title">${escHtml(n.title || 'Untitled notice')}</div>
+      <div class="notice-meta"><span class="gaz-no">${escHtml(n.gazette_no || '')}</span><span>${escHtml(n.date || '')}</span></div>
+      <div class="notice-summary">${escHtml(n.summary || '')}</div>
+      ${n.practitioner_note ? `<div class="notice-note">📌 ${escHtml(n.practitioner_note)}</div>` : ''}
+    </div>`).join('');
 }
-
-function cardList(notices){
-  const cards=notices.map(n=>{
-    const ns=JSON.stringify(JSON.stringify(n));
-    return `<div class="gz-card" onclick="openModal(${ns})"><div class="gz-top"><div class="gz-title">${esc(n.title||'Untitled notice')}</div><div class="gz-chips">${n.date?'<span class="chip chip-date">'+esc(n.date)+'</span>':''}${n.gazette_no?'<span class="chip chip-no">No. '+esc(n.gazette_no)+'</span>':''}</div></div><div class="gz-summary">${esc(n.summary||'')}</div><div class="gz-footer"><div class="gz-prac">${n.practitioner_note?'&#x1F4CC; '+esc(n.practitioner_note):''}</div><button class="btn-extract" onclick="event.stopPropagation();openModal(${ns})">Extract clauses &#x2192;</button></div></div>`;
-  }).join('');
-  return '<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden">'+cards+'</div>';
-}
-
-function spinner(msg){return '<div class="spin-wrap"><div class="spinner"></div><div class="spin-label">'+esc(msg)+'</div></div>';}
-function esc(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-function openModal(jsonStr){
-  const n=JSON.parse(jsonStr);currentGazette=n;
-  document.getElementById('modal-title').textContent=n.title||'Gazette notice';
-  document.getElementById('modal-summary').textContent=n.summary||'';
-  document.getElementById('ctx-box').value='';
-  document.querySelectorAll('.sector-chip').forEach(c=>c.classList.remove('sel'));
-  document.getElementById('extract-out').className='extract-out';
-  document.getElementById('extract-out').textContent='';
-  document.getElementById('act-row').style.display='none';
-  document.getElementById('btn-run').disabled=false;
-  document.getElementById('btn-run').textContent='Extract relevant clauses';
-  document.getElementById('overlay').classList.add('open');
-  document.body.style.overflow='hidden';
-}
-function closeModal(){document.getElementById('overlay').classList.remove('open');document.body.style.overflow='';}
-function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
-function toggleSector(chip){chip.classList.toggle('sel');}
-function resetExtract(){
-  document.getElementById('extract-out').className='extract-out';
-  document.getElementById('extract-out').textContent='';
-  document.getElementById('act-row').style.display='none';
-  document.getElementById('btn-run').disabled=false;
-  document.getElementById('btn-run').textContent='Extract relevant clauses';
-  document.querySelectorAll('.sector-chip').forEach(c=>c.classList.remove('sel'));
-  document.getElementById('ctx-box').value='';
-}
-async function runExtract(){
-  if(!currentGazette)return;
-  const sectors=Array.from(document.querySelectorAll('.sector-chip.sel')).map(c=>c.textContent).join(', ');
-  const context=document.getElementById('ctx-box').value.trim();
-  const btn=document.getElementById('btn-run');
-  const out=document.getElementById('extract-out');
-  btn.disabled=true;btn.textContent='Extracting\u2026';
-  out.className='extract-out';out.textContent='';
-  document.getElementById('act-row').style.display='none';
-  try{
-    const text=await apiExtract({type:'extract',title:currentGazette.title,summary:currentGazette.summary,date:currentGazette.date,sector:sectors||'general employer/HR practitioner',context});
-    out.textContent=text;out.className='extract-out show';
-    document.getElementById('act-row').style.display='flex';
-  }catch(e){out.textContent='Extraction failed: '+e.message;out.className='extract-out show';}
-  btn.disabled=false;btn.textContent='Extract relevant clauses';
-}
-function copyExtract(){
-  navigator.clipboard.writeText(document.getElementById('extract-out').textContent).then(()=>{
-    const btn=document.querySelector('.btn-copy');btn.textContent='Copied \u2713';setTimeout(()=>{btn.textContent='Copy to clipboard';},2000);
-  });
-}
+function spinner(msg) { return `<div class="spinner"><span class="spin"></span>${msg}</div>`; }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+window.addEventListener('DOMContentLoaded', () => {
+  buildCategories();
+  document.getElementById('srch-input').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+  setTimeout(() => loadCategory('labour'), 300);
+  setTimeout(() => loadCategory('tax'), 600);
+});
 </script>
 </body>
 </html>
