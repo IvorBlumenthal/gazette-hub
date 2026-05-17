@@ -1,15 +1,23 @@
 [build]
   publish = "."
-    functions = "netlify/functions"
+  functions = "netlify/functions"
 
-    [functions]
-      node_bundler = "esbuild"
+[functions]
+  node_bundler = "esbuild"
 
-      [functions."gazette"]
-        timeout = 26
+[functions."gazette"]
+  timeout = 26
 
-        [[headers]]
-          for = "/*"
-            [headers.values]
-                X-Frame-Options = "DENY"
-                    X-Content-Type-Options = "nosniff"
+[functions."gazette-scheduler"]
+  timeout = 900
+
+# Runs every Monday at 04:00 UTC = 06:00 SAST
+[[scheduled-functions]]
+  name = "gazette-scheduler"
+  cron = "0 4 * * 1"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
