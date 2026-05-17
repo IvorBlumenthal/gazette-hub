@@ -1,11 +1,10 @@
 // netlify/functions/gazette.js
-// Web search for real SA gazette notices, strict JSON output.
-// max_uses:1 keeps it well within timeout.
+// Web search for real SA gazette notices, padded to 8 with training knowledge.
 
 const CATEGORY_DESC = {
   labour:      'Labour Employment wage determinations CCMA employment equity sectoral UIF 2025 2026',
   tax:         'SARS tax National Treasury VAT customs income tax amendments 2025 2026',
-  bbbee:       'B-BBEE transformation codes charters verification DTI 2025 2026',
+  bbbee:       'B-BBEE transformation codes charters verification DTI empowerment 2025 2026',
   regs:        'Companies Act CIPC business regulations licensing consumer protection 2025 2026',
   procurement: 'government procurement PFMA supply chain preferential Treasury 2025 2026',
   environment: 'NEMA environmental impact waste management carbon tax 2025 2026',
@@ -67,11 +66,9 @@ exports.handler = async (event) => {
   const label = CATEGORY_LABEL[category];
   const keywords = CATEGORY_DESC[category];
 
-  const systemPrompt = 'You are a South African government gazette database. Output ONLY a raw JSON array. Start with [ end with ]. Each object: {"title":"string","gazette_no":"string","date":"YYYY-MM-DD","summary":"string","practitioner_note":"string","category":"string"}. No text before or after the array.';
+  const systemPrompt = 'You are a South African government gazette expert. Output ONLY a raw JSON array with no text before or after it. Start with [ and end with ]. Each object must have: {"title":"string","gazette_no":"string","date":"YYYY-MM-DD","summary":"2-3 sentences","practitioner_note":"1 sentence for employers","category":"' + category + '"}. Always return exactly 8 objects. Use web search results for real notices, then supplement with your knowledge of real SA gazette patterns to reach 8. Never return fewer than 8.';
 
-  const userPrompt = 'Search South African Government Gazette ' + currentYear + ': ' + keywords
-    + '. Find real gazette notices from the last ' + months + ' months with gazette numbers and dates.'
-    + ' Then output ONLY a JSON array of 6-8 notices. Start with [ end with ].';
+  const userPrompt = 'Search for South African Government Gazette notices about ' + label + ' published in ' + currentYear + '. Keywords: ' + keywords + '. Find notices from the last ' + months + ' months. Use your knowledge of the SA gazette system to include real gazette numbers and accurate dates. Return exactly 8 notices as a JSON array starting with [ and ending with ].';
 
   let notices = [];
   try {
@@ -80,7 +77,7 @@ exports.handler = async (event) => {
       headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
+        max_tokens: 2500,
         system: systemPrompt,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 1 }],
         messages: [{ role: 'user', content: userPrompt }],
@@ -98,6 +95,7 @@ exports.handler = async (event) => {
     if (si === -1 || ei <= si) throw new Error('No JSON array. Text: ' + text.slice(0, 100));
     notices = JSON.parse(text.slice(si, ei + 1));
     if (!Array.isArray(notices)) notices = [];
+    console.log('notices count:', notices.length);
 
   } catch (err) {
     console.error('AI error:', err.message);
