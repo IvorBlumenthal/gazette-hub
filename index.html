@@ -134,15 +134,7 @@ main{max-width:1100px;margin:0 auto;padding:2.5rem 2.5rem 5rem}
     <button class="pbtn" data-months="12" onclick="setPeriod(this)">Last 12 months</button>
     <button class="pbtn" data-months="24" onclick="setPeriod(this)">Last 24 months</button>
   </div>
-  <section class="spotlight" id="spotlight">
-    <div class="spotlight-hd">
-      <h2 id="spotlight-title">Recent gazettes &mdash; last 3 months</h2>
-      <span class="tag-new" id="spotlight-tag">Latest</span>
-    </div>
-    <p class="spotlight-desc">Significant gazette notices published across all practitioner categories in the selected period.</p>
-    <div id="spotlight-body"><button class="load-trigger" onclick="loadSpotlight()">&#8595;&nbsp; Load recent gazettes</button></div>
-  </section>
-  <hr class="divider"/>
+
   <section class="search-section" id="search-section">
     <div class="section-hd"><h2>Search all gazettes</h2></div>
     <p class="section-desc">Search across all South African Government Gazette notices by keyword, Act name, department, topic, or gazette number.</p>
@@ -220,37 +212,28 @@ const CATS = [
 ];
 const CAT_LABELS={labour:'Labour & Employment',bbbee:'B-BBEE',regs:'Regulations & Bills',procurement:'Procurement & Tenders',environment:'Environment',health:'Health & Medicines',tax:'Tax & Finance',all:'General'};
 const PERIOD_LABELS={3:'last 3 months',6:'last 6 months',12:'last 12 months',24:'last 24 months'};
-let currentPeriod=3,currentGazette=null,spotlightLoaded=false;
+let currentPeriod=3,currentGazette=null;
 const catState={};
 
 window.addEventListener('DOMContentLoaded',()=>{
   buildCategories();
   document.getElementById('srch-input').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
+  // Auto-load first two categories on page load
+  setTimeout(()=>{ loadCategory('labour'); },300);
+  setTimeout(()=>{ loadCategory('tax'); },500);
 });
 
 function setPeriod(btn){
   document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   currentPeriod=parseInt(btn.dataset.months);
-  document.getElementById('spotlight-title').textContent='Recent gazettes \u2014 '+PERIOD_LABELS[currentPeriod];
-  document.getElementById('spotlight-tag').textContent=currentPeriod<=3?'Latest':PERIOD_LABELS[currentPeriod];
-  spotlightLoaded=false;
-  document.getElementById('spotlight-body').innerHTML='<button class="load-trigger" onclick="loadSpotlight()">&#8595;&nbsp; Load recent gazettes</button>';
   Object.keys(catState).forEach(id=>{catState[id]='idle';});
   document.querySelectorAll('.cat-body').forEach(body=>{
     body.innerHTML='<button class="cat-load-btn" onclick="loadCategory(\''+body.dataset.catId+'\')">&#8595;&nbsp; Load '+PERIOD_LABELS[currentPeriod]+' notices</button>';
   });
-}
-
-async function loadSpotlight(){
-  if(spotlightLoaded)return;
-  spotlightLoaded=true;
-  const body=document.getElementById('spotlight-body');
-  body.innerHTML=spinner('Loading recent gazette notices\u2026');
-  const notices=await api({type:'gazette',category:'all',months:currentPeriod});
-  if(!notices){body.innerHTML='<div class="err-msg">Could not load notices. Please try again.</div>';spotlightLoaded=false;return;}
-  if(notices.length===0){body.innerHTML='<div class="empty-msg">No notices returned for this period.</div>';return;}
-  body.innerHTML=cardList(notices);
+  // Reload the two auto-open categories
+  setTimeout(()=>{ loadCategory('labour'); },300);
+  setTimeout(()=>{ loadCategory('tax'); },500);
 }
 
 function buildCategories(){
