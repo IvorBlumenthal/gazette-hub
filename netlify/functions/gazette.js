@@ -23,7 +23,7 @@ exports.handler = async (event) => {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
                                     body: JSON.stringify({
-                                                  model: 'claude-opus-4-5',
+                                                            model: 'claude-opus-4-7',
                                                   max_tokens: 2000,
                                                   system: 'You are a South African government gazette analyst with deep knowledge of SA Government Gazettes published up to May 2025. Return only valid JSON arrays. Never invent notices. If nothing found, return [].',
                                                   messages: [{ role: 'user', content: userMsg }],
@@ -51,7 +51,7 @@ exports.handler = async (event) => {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
                                     body: JSON.stringify({
-                                                  model: 'claude-opus-4-5',
+                                                            model: 'claude-opus-4-7',
                                                   max_tokens: 700,
                                                   messages: [{ role: 'user', content: prompt }],
                                     }),
