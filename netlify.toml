@@ -1,12 +1,15 @@
 [build]
   publish = "."
-  functions = "netlify/functions"
+    functions = "netlify/functions"
 
-[functions]
-  node_bundler = "esbuild"
+    [functions]
+      node_bundler = "esbuild"
 
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
+      [functions."gazette"]
+        timeout = 26
+
+        [[headers]]
+          for = "/*"
+            [headers.values]
+                X-Frame-Options = "DENY"
+                    X-Content-Type-Options = "nosniff"
