@@ -1,132 +1,136 @@
 // netlify/functions/gazette.js
-// Set ANTHROPIC_API_KEY in Netlify environment variables.
+// Checks Supabase cache first for instant results.
+// Falls back to live Anthropic API (Haiku + web search) if cache is empty.
+// Set ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY in Netlify env vars.
 
-const GAZETTE_CONTEXT = `You are an expert on South African Government Gazettes. The Government Printing Works publishes the Government Gazette multiple times per week. Recent publication dates include: 5 Jan 2024, 12 Jan 2024, 19 Jan 2024, 26 Jan 2024, 2 Feb 2024, 16 Feb 2024, 1 Mar 2024, 15 Mar 2024, 28 Mar 2024, 5 Apr 2024, 19 Apr 2024, 30 Apr 2024, 10 May 2024, 31 May 2024, 14 Jun 2024, 28 Jun 2024, 12 Jul 2024, 26 Jul 2024, 9 Aug 2024, 23 Aug 2024, 6 Sep 2024, 20 Sep 2024, 4 Oct 2024, 18 Oct 2024, 1 Nov 2024, 15 Nov 2024, 29 Nov 2024, 13 Dec 2024, 6 Jan 2025, 24 Jan 2025, 31 Jan 2025, 14 Feb 2025, 28 Feb 2025, 14 Mar 2025, 28 Mar 2025, 4 Apr 2025, 25 Apr 2025, 30 Apr 2025, 16 May 2025.
+const GAZETTE_CONTEXT =
+  'You are an expert on South African Government Gazettes. ' +
+  'Use web search to find real, verified gazette notices. ' +
+  'Return ONLY a valid JSON array, no markdown, no backticks, no preamble. ' +
+  'Never return an empty array. ' +
+  'Each object must have: title, gazette_no, date, summary (2-3 sentences), ' +
+  'practitioner_note (1 sentence), category (labour|bbbee|regs|procurement|environment|health|tax).';
 
-South Africa publishes dozens of gazette notices every week across labour, tax, B-BBEE, procurement, environment, health, and regulatory categories. You have comprehensive knowledge of these notices.
-
-IMPORTANT: Always return real, specific gazette notices. Never return an empty array. There are always relevant notices to report.
-
-Return ONLY a valid JSON array. No markdown. No backticks. No preamble. Each object must have exactly:
-{"title":"string","gazette_no":"string or null","date":"e.g. March 2024","summary":"2-3 sentences: what it does, who it affects, key figures or deadlines","practitioner_note":"one sentence practical implication for employers or HR practitioners","category":"labour|bbbee|regs|procurement|environment|health|tax"}`;
-
-const CATEGORY_PROMPTS = {
-  labour: `List 8 real South African Government Gazette notices on Labour & Employment published in the period specified. Include: National Minimum Wage determinations, sectoral wage determinations, CCMA rules and fee schedules, bargaining council main agreements and extensions, LRA or BCEA amendments, employment equity reports and targets, UIF notices, Protected Disclosures Act notices, Essential Services Committee determinations.`,
-  bbbee: `List 8 real South African Government Gazette notices on B-BBEE published in the period specified. Include: B-BBEE Codes of Good Practice amendments, sector charters (mining, construction, financial sector, ICT, tourism, property), generic codes updates, B-BBEE Commission notices, verification agency accreditation notices, preferential procurement regulations.`,
-  regs: `List 8 real South African Government Gazette notices on Regulations & Bills published in the period specified. Include: new Bills tabled in Parliament, regulations under existing Acts, commencement notices for new legislation, amendment Bills, National Assembly notices, regulations under the Companies Act, Consumer Protection Act regulations, POPIA regulations.`,
-  procurement: `List 8 real South African Government Gazette notices on Procurement & Tenders published in the period specified. Include: Preferential Procurement Policy Framework Act regulations, PPPFA threshold amendments, National Treasury instruction notes, public sector tender notices, PFMA regulations, supply chain management circulars, State Information Technology Agency notices.`,
-  environment: `List 8 real South African Government Gazette notices on Environment published in the period specified. Include: NEMA regulations, environmental impact assessment regulations, carbon tax notices, National Environmental Management Acts amendments, biodiversity notices, waste management regulations, climate change response notices, DFFE department notices.`,
-  health: `List 8 real South African Government Gazette notices on Health & Medicines published in the period specified. Include: NHI Act notices, SAHPRA regulations and schedules, Medicines and Related Substances Act amendments, scheduled substance notices, medical aid regulations, Council for Medical Schemes notices, tobacco control regulations, COVID-19 related health notices.`,
-  tax: `List 8 real South African Government Gazette notices on Tax & Finance published in the period specified. Include: SARS binding general rulings, tax table determinations, VAT registration thresholds, Tax Administration Act notices, Income Tax Act amendments, Customs and Excise Act notices, carbon tax notices, National Treasury regulations, financial sector conduct authority notices.`,
-  all: `List 10 real South African Government Gazette notices across ALL practitioner categories published in the period specified. Include a mix from: labour law (wage determinations, bargaining council agreements), B-BBEE (codes, charters), tax (SARS notices, tax tables), regulations (new Acts, amendments), procurement (PPPFA, National Treasury), environment (NEMA), and health (SAHPRA, NHI).`
+const PROMPTS = {
+  labour:
+    'Search for South African Government Gazette notices on Labour and Employment published in the last {months} months. ' +
+    'Include: wage determinations, labour law amendments, CCMA notices, employment equity reports, ' +
+    'sectoral determinations, UIF/COIDA notices. Return 8 real notices as a JSON array.',
+  tax:
+    'Search for South African Government Gazette notices on Tax, SARS, and National Treasury published in the last {months} months. ' +
+    'Include: tax law amendments, SARS notices, budget-related gazettes, VAT/customs notices, revenue regulations. ' +
+    'Return 8 real notices as a JSON array.',
+  bbbee:
+    'Search for South African Government Gazette notices on B-BBEE, transformation, and empowerment published in the last {months} months. ' +
+    'Include: B-BBEE codes, sector charters, BEE verification, empowerment certificates, DTI notices. ' +
+    'Return 8 real notices as a JSON array.',
+  regs:
+    'Search for South African Government Gazette notices on company regulations, CIPC, and business compliance published in the last {months} months. ' +
+    'Include: Companies Act amendments, CIPC notices, business licensing, consumer protection regulations. ' +
+    'Return 8 real notices as a JSON array.',
+  procurement:
+    'Search for South African Government Gazette notices on government procurement and tenders published in the last {months} months. ' +
+    'Include: PFMA amendments, SCM regulations, preferential procurement, National Treasury instructions. ' +
+    'Return 8 real notices as a JSON array.',
+  environment:
+    'Search for South African Government Gazette notices on environment, climate, and sustainability published in the last {months} months. ' +
+    'Include: NEMA amendments, environmental impact assessments, waste management regulations, carbon tax notices. ' +
+    'Return 8 real notices as a JSON array.',
+  health:
+    'Search for South African Government Gazette notices on health, occupational health, and safety published in the last {months} months. ' +
+    'Include: OHS Act amendments, health regulations, NHI notices, pharmaceutical regulations, workplace safety. ' +
+    'Return 8 real notices as a JSON array.',
 };
 
 exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
   }
+
+  let body;
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) };
+  }
+
+  const { category, months = 3 } = body;
+
+  if (!category || !PROMPTS[category]) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Invalid category. Use: ' + Object.keys(PROMPTS).join(', ') }),
+    };
+  }
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: 'API key not configured' }) };
 
-  let payload;
-  try { payload = JSON.parse(event.body); }
-  catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
-
-  const { type, category, months, query, title, summary, date, sector, context } = payload;
-
-  // ── GAZETTE LIBRARY ───────────────────────────────────────────────────────
-  if (type === 'gazette') {
-    const catPrompt = CATEGORY_PROMPTS[category] || CATEGORY_PROMPTS['all'];
-    const periodText = months === 3 ? 'February 2025 to May 2025'
-      : months === 6 ? 'November 2024 to May 2025'
-      : months === 12 ? 'May 2024 to May 2025'
-      : 'May 2023 to May 2025';
-
-    const userMsg = `${catPrompt}\n\nPeriod: ${periodText}.\n\nReturn the JSON array now.`;
-
-    try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 2000, system: GAZETTE_CONTEXT, messages: [{ role: 'user', content: userMsg }] }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        console.error('Anthropic error:', JSON.stringify(err));
-        return { statusCode: 502, body: JSON.stringify({ error: err.error?.message || 'API error' }) };
-      }
-      const data = await resp.json();
-      const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-      const match = text.replace(/```json|```/g, '').trim().match(/\[[\s\S]*\]/);
-      const notices = match ? JSON.parse(match[0]) : [];
-      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notices }) };
-    } catch (e) {
-      console.error('gazette error:', e.message);
-      return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
-    }
+  if (!apiKey) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set' }) };
   }
 
-  // ── SEARCH ────────────────────────────────────────────────────────────────
-  if (type === 'search') {
-    const userMsg = `List 8 real South African Government Gazette notices related to: "${query}"\n\nSearch across all gazette categories from May 2023 to May 2025. Return specific, real notices with accurate dates and gazette numbers where known.\n\nReturn the JSON array now.`;
-
+  if (supabaseUrl && supabaseKey) {
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 2000, system: GAZETTE_CONTEXT, messages: [{ role: 'user', content: userMsg }] }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        return { statusCode: 502, body: JSON.stringify({ error: err.error?.message || 'API error' }) };
+      const cacheRes = await fetch(
+        supabaseUrl + '/rest/v1/gazette_cache?category=eq.' + encodeURIComponent(category) + '&months=eq.' + months + '&select=notices,updated_at',
+        { headers: { apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey } }
+      );
+      if (cacheRes.ok) {
+        const cacheData = await cacheRes.json();
+        if (cacheData && cacheData.length > 0) {
+          const row = cacheData[0];
+          const ageHours = (Date.now() - new Date(row.updated_at).getTime()) / 3600000;
+          if (ageHours < 168 && Array.isArray(row.notices) && row.notices.length > 0) {
+            return { statusCode: 200, headers, body: JSON.stringify({ notices: row.notices, cached: true }) };
+          }
+        }
       }
-      const data = await resp.json();
-      const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-      const match = text.replace(/```json|```/g, '').trim().match(/\[[\s\S]*\]/);
-      const notices = match ? JSON.parse(match[0]) : [];
-      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notices }) };
-    } catch (e) {
-      return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
-    }
+    } catch (err) { console.error('Cache read error:', err.message); }
   }
 
-  // ── EXTRACT ───────────────────────────────────────────────────────────────
-  if (type === 'extract') {
-    const prompt = `You are a South African labour law and HR practitioner specialist.
-
-Extract and rewrite the relevant clauses from this gazette notice for the specified sector.
-
-GAZETTE NOTICE:
-Title: ${title}
-Date: ${date || 'unknown'}
-Summary: ${summary}
-
-SECTOR: ${sector || 'general employer/HR practitioner'}${context ? '\n\nAdditional context: ' + context : ''}
-
-Instructions:
-1. Identify clauses most relevant to the specified sector.
-2. Rewrite in plain, direct, practitioner-ready language.
-3. Include specific numbers, dates, thresholds, or deadlines.
-4. End with a short "What this means for you" paragraph.
-5. Under 400 words. No bullet points. Short paragraphs with bold subheadings.`;
-
-    try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 700, messages: [{ role: 'user', content: prompt }] }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        return { statusCode: 502, body: JSON.stringify({ error: err.error?.message || 'API error' }) };
-      }
-      const data = await resp.json();
-      const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
-      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) };
-    } catch (e) {
-      return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
-    }
+  const userMsg = PROMPTS[category].replace('{months}', months);
+  let notices = [];
+  try {
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        system: GAZETTE_CONTEXT,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+        messages: [{ role: 'user', content: userMsg }],
+      }),
+    });
+    if (!aiRes.ok) throw new Error('Anthropic API ' + aiRes.status + ': ' + await aiRes.text());
+    const aiData = await aiRes.json();
+    const textBlocks = (aiData.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    const clean = textBlocks.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    notices = Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error('AI fetch error:', err.message);
+    return { statusCode: 502, headers, body: JSON.stringify({ error: 'Failed to fetch notices: ' + err.message }) };
   }
 
-  return { statusCode: 400, body: JSON.stringify({ error: 'Unknown type' }) };
+  if (supabaseUrl && supabaseKey && notices.length > 0) {
+    try {
+      await fetch(supabaseUrl + '/rest/v1/gazette_cache', {
+        method: 'POST',
+        headers: { apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ category, months, notices, updated_at: new Date().toISOString() }),
+      });
+    } catch (err) { console.error('Cache write error:', err.message); }
+  }
+
+  return { statusCode: 200, headers, body: JSON.stringify({ notices, cached: false }) };
 };
