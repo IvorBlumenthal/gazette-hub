@@ -24,6 +24,16 @@ const DEFAULT_CATEGORIES = [
 ];
 
 function store() {
+  // Netlify is supposed to auto-configure Blobs for any function at runtime,
+  // but that auto-configuration isn't landing for this site (functions throw
+  // MissingBlobsEnvironmentError). Fall back to explicit configuration using
+  // the site ID Netlify always injects as process.env.SITE_ID, plus a
+  // personal access token supplied via the BLOBS_TOKEN environment variable.
+  const siteID = process.env.SITE_ID;
+  const token = process.env.BLOBS_TOKEN;
+  if (siteID && token) {
+    return getStore({ name: STORE_NAME, siteID: siteID, token: token });
+  }
   return getStore(STORE_NAME);
 }
 
