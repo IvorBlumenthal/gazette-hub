@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Categories — SA Gazette Hub</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1A2E3B;--navy-mid:#2C4A5C;--navy-light:#3D6275;
+  --gold:#C9922A;--gold-light:#F5E8CE;
+  --cream:#FAF8F3;--sand:#EDE8DF;
+  --text:#2C2C2C;--text-mid:#5A5A5A;--text-soft:#8A8A8A;
+  --green:#2E7D52;--green-light:#E8F5ED;
+  --red:#C0392B;--red-light:#FDECEA;
+  --border:#DDD8CF;
+  --radius:10px;--radius-lg:16px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
+a{color:inherit;text-decoration:none;}
+header{background:var(--navy);color:#fff;padding:0 32px;}
+.hdr-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px;}
+.hdr-brand{font-size:1.1rem;font-weight:700;letter-spacing:.5px;}
+.hdr-brand span{color:var(--gold);}
+.hdr-sub{font-size:.78rem;color:#aaa;margin-top:2px;}
+.hdr-back{font-size:.8rem;color:#ccc;}
+.hdr-back:hover{color:var(--gold);}
+.main{max-width:900px;margin:0 auto;padding:28px 32px;}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px;}
+.card h2{font-size:1rem;color:var(--navy);margin-bottom:14px;}
+label{display:block;font-size:.78rem;font-weight:600;color:var(--text-mid);margin-bottom:4px;margin-top:12px;}
+label:first-of-type{margin-top:0;}
+input[type=text],input[type=password],input[type=number],textarea{
+  width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:.88rem;outline:none;font-family:inherit;
+}
+input:focus,textarea:focus{border-color:var(--gold);}
+textarea{resize:vertical;min-height:56px;}
+.hint{font-size:.74rem;color:var(--text-soft);margin-top:4px;}
+.row{display:flex;gap:12px;}
+.row > div{flex:1;}
+.btn{background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:10px 20px;font-size:.86rem;font-weight:600;cursor:pointer;}
+.btn:hover{background:var(--navy-mid);}
+.btn.gold{background:var(--gold);color:var(--navy);}
+.btn.gold:hover{background:#b3801f;}
+.btn.outline{background:transparent;border:1px solid var(--border);color:var(--text-mid);}
+.btn.outline:hover{border-color:var(--red);color:var(--red);}
+.btn.small{padding:5px 12px;font-size:.76rem;}
+.cat-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.cat-row:last-child{border-bottom:none;}
+.cat-row .icon{font-size:1.3rem;width:32px;text-align:center;}
+.cat-row .info{flex:1;min-width:0;}
+.cat-row .label{font-weight:700;font-size:.9rem;color:var(--navy);}
+.cat-row .meta{font-size:.75rem;color:var(--text-soft);margin-top:2px;}
+.cat-row .kw{font-size:.76rem;color:var(--text-mid);margin-top:4px;line-height:1.4;}
+.cat-row.inactive{opacity:.5;}
+.actions{display:flex;gap:6px;flex-shrink:0;}
+.badge{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px;}
+.badge.on{background:var(--green-light);color:var(--green);}
+.badge.off{background:var(--red-light);color:var(--red);}
+.msg{border-radius:var(--radius);padding:10px 14px;font-size:.84rem;margin-bottom:14px;}
+.msg.err{background:var(--red-light);color:var(--red);}
+.msg.ok{background:var(--green-light);color:var(--green);}
+.gate{max-width:360px;margin:80px auto;text-align:center;}
+.gate .card{text-align:left;}
+#app{display:none;}
+.empty{color:var(--text-soft);font-size:.85rem;padding:12px 0;}
+</style>
+</head>
+<body>
+<header>
+  <div class="hdr-inner">
+    <div>
+      <div class="hdr-brand"><span>SA</span> Gazette Hub — Admin</div>
+      <div class="hdr-sub">Manage the categories shown on the site</div>
+    </div>
+    <a class="hdr-back" href="/">&larr; Back to site</a>
+  </div>
+</header>
+
+<div id="gate" class="gate">
+  <div class="card">
+    <h2>Admin password</h2>
+    <label for="pw-input">Password</label>
+    <input type="password" id="pw-input" placeholder="Enter admin password" />
+    <div id="gate-msg"></div>
+    <button class="btn" style="margin-top:14px;width:100%" onclick="unlock()">Unlock</button>
+  </div>
+</div>
+
+<div id="app" class="main">
+  <div id="banner"></div>
+
+  <div class="card">
+    <h2>Add a new category</h2>
+    <div class="row">
+      <div>
+        <label for="f-label">Category name</label>
+        <input type="text" id="f-label" placeholder="e.g. Bargaining Councils & Agreements" />
+      </div>
+      <div style="flex:0 0 90px">
+        <label for="f-icon">Icon</label>
+        <input type="text" id="f-icon" placeholder="📑" maxlength="4" />
+      </div>
+    </div>
+    <label for="f-keywords">Search keywords</label>
+    <textarea id="f-keywords" placeholder="Words and phrases that describe this topic — used to guide the gazette search, e.g. 'bargaining council collective agreements main agreement extension sectoral determination'"></textarea>
+    <div class="hint">These keywords are sent to the search engine behind the scenes, so be specific — they don't need to look nice, they need to find the right notices.</div>
+    <button class="btn gold" style="margin-top:14px" onclick="createCategory()">+ Add category</button>
+  </div>
+
+  <div class="card">
+    <h2>Existing categories</h2>
+    <div class="hint" style="margin-bottom:10px">Categories are shown on the site in the order below (lowest number first). Turn a category off to hide it without deleting it.</div>
+    <div id="cat-list"></div>
+  </div>
+</div>
+
+<script>
+const PW_KEY = 'gazette_admin_pw';
+let categories = [];
+
+function getPw() { return sessionStorage.getItem(PW_KEY) || ''; }
+
+async function verifyPassword(pw) {
+  const res = await fetch('/.netlify/functions/categories?verify=1', { headers: { 'x-admin-password': pw } });
+  return res.ok;
+}
+
+async function unlock() {
+  const pw = document.getElementById('pw-input').value;
+  if (!pw) return;
+  const ok = await verifyPassword(pw);
+  if (!ok) {
+    sessionStorage.removeItem(PW_KEY);
+    document.getElementById('gate-msg').innerHTML = '<div class="msg err" style="margin-top:10px">Incorrect password.</div>';
+    return;
+  }
+  sessionStorage.setItem(PW_KEY, pw);
+  document.getElementById('gate-msg').innerHTML = '';
+  await loadCategories();
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+async function apiCall(method, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (method !== 'GET') opts.headers['x-admin-password'] = getPw();
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch('/.netlify/functions/categories' + (method === 'GET' ? '?all=1' : ''), opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+async function loadCategories() {
+  try {
+    // Listing categories (even inactive ones, for the admin view) is a plain
+    // GET and doesn't require the password — only create/edit/delete/verify do.
+    const res = await fetch('/.netlify/functions/categories?all=1');
+    const data = await res.json();
+    categories = (data.categories || []).slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    renderList();
+    return true;
+  } catch (err) {
+    banner('Could not reach the server. Try again.', 'err');
+    return false;
+  }
+}
+
+function renderList() {
+  const el = document.getElementById('cat-list');
+  if (categories.length === 0) { el.innerHTML = '<div class="empty">No categories yet.</div>'; return; }
+  el.innerHTML = categories.map(c => `
+    <div class="cat-row ${c.active === false ? 'inactive' : ''}">
+      <div class="icon">${escHtml(c.icon || '📄')}</div>
+      <div class="info">
+        <div class="label">${escHtml(c.label)}<span class="badge ${c.active === false ? 'off' : 'on'}">${c.active === false ? 'hidden' : 'live'}</span></div>
+        <div class="meta">id: ${escHtml(c.id)} &nbsp;·&nbsp; order: ${c.sortOrder}</div>
+        <div class="kw">${escHtml(c.keywords)}</div>
+      </div>
+      <div class="actions">
+        <button class="btn outline small" onclick="editCategory('${c.id}')">Edit</button>
+        <button class="btn outline small" onclick="toggleActive('${c.id}', ${c.active === false})">${c.active === false ? 'Show' : 'Hide'}</button>
+        <button class="btn outline small" onclick="deleteCategory('${c.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+function banner(msg, type) {
+  document.getElementById('banner').innerHTML = `<div class="msg ${type}">${escHtml(msg)}</div>`;
+  setTimeout(() => { document.getElementById('banner').innerHTML = ''; }, 5000);
+}
+
+async function createCategory() {
+  const label = document.getElementById('f-label').value.trim();
+  const icon = document.getElementById('f-icon').value.trim() || '📄';
+  const keywords = document.getElementById('f-keywords').value.trim();
+  if (!label || !keywords) { banner('Category name and search keywords are both required.', 'err'); return; }
+  try {
+    await apiCall('POST', { label, icon, keywords });
+    document.getElementById('f-label').value = '';
+    document.getElementById('f-icon').value = '';
+    document.getElementById('f-keywords').value = '';
+    banner('Category added.', 'ok');
+    await loadCategories();
+  } catch (err) { banner(err.message, 'err'); }
+}
+
+async function editCategory(id) {
+  const cat = categories.find(c => c.id === id);
+  if (!cat) return;
+  const newLabel = prompt('Category name:', cat.label);
+  if (newLabel === null) return;
+  const newIcon = prompt('Icon:', cat.icon || '');
+  if (newIcon === null) return;
+  const newKeywords = prompt('Search keywords:', cat.keywords);
+  if (newKeywords === null) return;
+  try {
+    await apiCall('PUT', { id, label: newLabel.trim(), icon: newIcon.trim(), keywords: newKeywords.trim() });
+    banner('Category updated.', 'ok');
+    await loadCategories();
+  } catch (err) { banner(err.message, 'err'); }
+}
+
+async function toggleActive(id, makeActive) {
+  try {
+    await apiCall('PUT', { id, active: makeActive });
+    banner(makeActive ? 'Category is now visible on the site.' : 'Category hidden from the site.', 'ok');
+    await loadCategories();
+  } catch (err) { banner(err.message, 'err'); }
+}
+
+async function deleteCategory(id) {
+  if (!confirm('Delete this category permanently? This cannot be undone.')) return;
+  try {
+    await apiCall('DELETE', { id });
+    banner('Category deleted.', 'ok');
+    await loadCategories();
+  } catch (err) { banner(err.message, 'err'); }
+}
+
+function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+window.addEventListener('DOMContentLoaded', async () => {
+  if (getPw()) {
+    const ok = await verifyPassword(getPw());
+    if (ok) {
+      await loadCategories();
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    } else {
+      sessionStorage.removeItem(PW_KEY);
+    }
+  }
+  document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+});
+</script>
+</body>
+</html>

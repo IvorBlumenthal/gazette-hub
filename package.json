@@ -1,0 +1,8 @@
+{
+  "name": "gazette-hub",
+  "private": true,
+  "description": "SA Gazette Hub - ArkKonsult",
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  }
+}

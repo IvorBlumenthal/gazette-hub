@@ -104,23 +104,32 @@ footer a{color:var(--gold);}
 <footer>
   <a href="https://arkkonsult.co.za" target="_blank">arkkonsult.co.za</a> &nbsp;|&nbsp;
   ivorb@arkkonsult.com &nbsp;|&nbsp; +27 82 880 5316 &nbsp;|&nbsp;
-  &copy; 2025 ArkKonsult PTY Limited. All rights reserved.
+  &copy; 2025 ArkKonsult PTY Limited. All rights reserved. &nbsp;|&nbsp;
+  <a href="/admin.html">Manage categories</a>
 </footer>
 <script>
-const CATEGORIES = [
-  { id:'labour',      icon:'⚖️', label:'Labour & Employment' },
-  { id:'tax',         icon:'🏛️', label:'Tax & Revenue' },
-  { id:'bbbee',       icon:'🤝', label:'B-BBEE & Transformation' },
-  { id:'regs',        icon:'📋', label:'Company Regulations' },
-  { id:'procurement', icon:'🏗️', label:'Government Procurement' },
-  { id:'environment', icon:'🌿', label:'Environment & Sustainability' },
-  { id:'health',      icon:'🏥', label:'Health & OHS' },
-];
+let CATEGORIES = [];
 const PERIOD_LABELS = { 1:'last month', 3:'last 3 months', 6:'last 6 months' };
 let currentPeriod = 3;
 const catState = {};
+async function fetchCategories() {
+  try {
+    const res = await fetch('/.netlify/functions/categories');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    return Array.isArray(data.categories) ? data.categories : [];
+  } catch (err) {
+    console.error('Failed to load categories:', err);
+    return [];
+  }
+}
 function buildCategories() {
   const grid = document.getElementById('cat-grid');
+  grid.innerHTML = '';
+  if (CATEGORIES.length === 0) {
+    grid.innerHTML = '<div class="err-msg">Could not load categories. <button class="cat-load-btn" style="margin-top:10px" onclick="location.reload()">&#8634; Try again</button></div>';
+    return;
+  }
   CATEGORIES.forEach(cat => {
     catState[cat.id] = 'idle';
     const card = document.createElement('div');
@@ -207,11 +216,12 @@ function renderNotices(notices) {
 }
 function spinner(msg) { return `<div class="spinner"><span class="spin"></span>${msg}</div>`; }
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  CATEGORIES = await fetchCategories();
   buildCategories();
   document.getElementById('srch-input').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
-  setTimeout(() => loadCategory('labour'), 300);
-  setTimeout(() => loadCategory('tax'), 600);
+  // Auto-load the first two categories so the page isn't empty on arrival.
+  CATEGORIES.slice(0, 2).forEach((cat, i) => setTimeout(() => loadCategory(cat.id), 300 + i * 300));
 });
 </script>
 </body>
