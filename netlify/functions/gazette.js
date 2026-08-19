@@ -3,6 +3,7 @@
 
 const { findById } = require('./lib/categories');
 const { callAI } = require('./lib/ai');
+const { getCached, setCached } = require('./lib/cache');
 
 exports.handler = async (event) => {
   const headers = {
@@ -19,9 +20,6 @@ exports.handler = async (event) => {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set' }) };
-
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
   // ── FREE-TEXT SEARCH ──────────────────────────────────────
   if (reqBody.search) {
@@ -56,18 +54,9 @@ exports.handler = async (event) => {
   }
 
   // Check cache
-  if (supabaseUrl && supabaseKey) {
-    try {
-      const cacheUrl = supabaseUrl + '/rest/v1/gazette_cache?category=eq.' + encodeURIComponent(categoryId) + '&months=eq.' + months + '&select=notices,updated_at';
-      const cacheRes = await fetch(cacheUrl, { headers: { apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey } });
-      if (cacheRes.ok) {
-        const rows = await cacheRes.json();
-        if (rows && rows.length > 0 && Array.isArray(rows[0].notices) && rows[0].notices.length > 0) {
-          const ageHours = (Date.now() - new Date(rows[0].updated_at).getTime()) / 3600000;
-          if (ageHours < 168) return { statusCode: 200, headers, body: JSON.stringify({ notices: rows[0].notices, cached: true }) };
-        }
-      }
-    } catch (e) { console.error('Cache read:', e.message); }
+  const cachedNotices = await getCached(categoryId, months);
+  if (cachedNotices) {
+    return { statusCode: 200, headers, body: JSON.stringify({ notices: cachedNotices, cached: true }) };
   }
 
   const currentYear = new Date().getFullYear();
@@ -88,14 +77,8 @@ exports.handler = async (event) => {
   }
 
   // Write cache
-  if (supabaseUrl && supabaseKey && notices.length > 0) {
-    try {
-      await fetch(supabaseUrl + '/rest/v1/gazette_cache', {
-        method: 'POST',
-        headers: { apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ category: categoryId, months: months, notices: notices, updated_at: new Date().toISOString() }),
-      });
-    } catch (e) { console.error('Cache write:', e.message); }
+  if (notices.length > 0) {
+    await setCached(categoryId, months, notices);
   }
 
   return { statusCode: 200, headers, body: JSON.stringify({ notices: notices, cached: false }) };
