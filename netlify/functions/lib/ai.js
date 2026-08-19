@@ -42,11 +42,27 @@ function extractJsonArray(text) {
   }
 }
 
-async function callAIOnce(apiKey, userPrompt, useSearch, maxTokens) {
+// Same idea as extractJsonArray, but for a single {...} object rather than
+// an array — used by the newsletter writer, which returns one JSON object.
+function extractJsonObject(text) {
+  const si = text.indexOf('{');
+  const ei = text.lastIndexOf('}');
+  if (si === -1 || ei <= si) return null;
+  let slice = text.slice(si, ei + 1);
+  slice = slice.replace(/,\s*([\]}])/g, '$1');
+  try {
+    const parsed = JSON.parse(slice);
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function callAIOnce(apiKey, systemPrompt, userPrompt, useSearch, maxTokens) {
   const body = {
     model: MODEL,
     max_tokens: maxTokens,
-    system: JSON_SYSTEM,
+    system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   };
   if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 1 }];
@@ -91,7 +107,7 @@ async function callAI(apiKey, userPrompt, useSearch) {
   for (let i = 0; i < attempts.length; i++) {
     const attempt = attempts[i];
     try {
-      const text = await callAIOnce(apiKey, attempt.prompt, attempt.search, attempt.maxTokens);
+      const text = await callAIOnce(apiKey, JSON_SYSTEM, attempt.prompt, attempt.search, attempt.maxTokens);
       const parsed = extractJsonArray(text);
       if (parsed) return parsed;
       lastErr = new Error('No JSON array found. Got: ' + text.slice(0, 150));
@@ -102,4 +118,45 @@ async function callAI(apiKey, userPrompt, useSearch) {
   throw lastErr || new Error('Unknown error generating notices');
 }
 
-module.exports = { callAI, extractJsonArray, MODEL };
+// System prompt for the monthly newsletter writer. Unlike callAI above, this
+// is never given raw search access — it's handed the real, already-verified
+// notices for the month (title/date/summary/source_url, gathered the same
+// way the rest of the site gathers them) and asked only to write readable
+// prose around them. Keeping it to plain-text fields (no HTML) means the
+// site can safely render the output itself, the same way it already
+// escapes and formats notice text elsewhere.
+const NEWSLETTER_SYSTEM = 'You are writing a monthly email newsletter digest of South African Government Gazette notices for employers, on behalf of ArkKonsult. '
+  + 'You will be given real notices grouped by category. Output ONLY a raw JSON object. Start with { and end with }. '
+  + 'Shape: {"subject":"string - email subject line, specific and useful, e.g. \'ArkKonsult Gazette Digest — August 2026\'","title":"string - newsletter headline","intro":"string - 2-3 plain-text sentences overviewing the month, no HTML tags","sections":[{"categoryId":"string - must exactly match one of the category ids given to you","synthesis":"string - 2-4 plain-text sentences summarising what happened in this category this month and why an employer should care, no HTML tags"}]}. '
+  + 'Only include a section for a categoryId that was actually given notices. Do not invent notices or details beyond what was provided. '
+  + 'No text before or after the JSON object, no markdown fences, no HTML tags anywhere in the values — plain sentences only, since the site adds its own formatting.';
+
+const NEWSLETTER_RETRY_NOTE = '\n\nIMPORTANT: Your previous attempt did not return valid JSON. This time, respond with ONLY the JSON object — no introductory sentence, '
+  + 'no explanation, no markdown fences, no HTML tags in any value. Start your reply with the character { and end it with }.';
+
+// Writes the monthly newsletter's prose (subject/title/intro/per-category
+// synthesis) from real notices the caller already gathered — no web search
+// needed here, so this is faster and cheaper than callAI, and can't
+// hallucinate notices that don't exist.
+async function callAINewsletter(apiKey, userPrompt) {
+  const attempts = [
+    { prompt: userPrompt, maxTokens: 2000 },
+    { prompt: userPrompt + NEWSLETTER_RETRY_NOTE, maxTokens: 2000 },
+  ];
+
+  let lastErr = null;
+  for (let i = 0; i < attempts.length; i++) {
+    const attempt = attempts[i];
+    try {
+      const text = await callAIOnce(apiKey, NEWSLETTER_SYSTEM, attempt.prompt, false, attempt.maxTokens);
+      const parsed = extractJsonObject(text);
+      if (parsed) return parsed;
+      lastErr = new Error('No JSON object found. Got: ' + text.slice(0, 150));
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Unknown error generating newsletter text');
+}
+
+module.exports = { callAI, callAINewsletter, extractJsonArray, extractJsonObject, MODEL };

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newsletter — SA Gazette Hub</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1A2E3B;--navy-mid:#2C4A5C;--navy-light:#3D6275;
+  --gold:#C9922A;--gold-light:#F5E8CE;
+  --cream:#FAF8F3;--sand:#EDE8DF;
+  --text:#2C2C2C;--text-mid:#5A5A5A;--text-soft:#8A8A8A;
+  --green:#2E7D52;--green-light:#E8F5ED;
+  --red:#C0392B;--red-light:#FDECEA;
+  --border:#DDD8CF;
+  --radius:10px;--radius-lg:16px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
+a{color:inherit;text-decoration:none;}
+header{background:var(--navy);color:#fff;padding:0 32px;}
+.hdr-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px;}
+.hdr-brand{font-size:1.1rem;font-weight:700;letter-spacing:.5px;}
+.hdr-brand span{color:var(--gold);}
+.hdr-sub{font-size:.78rem;color:#aaa;margin-top:2px;}
+.hdr-back{font-size:.8rem;color:#ccc;}
+.hdr-back:hover{color:var(--gold);}
+.main{max-width:900px;margin:0 auto;padding:28px 32px;}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px;}
+.msg{border-radius:var(--radius);padding:10px 14px;font-size:.84rem;margin-bottom:16px;}
+.msg.err{background:var(--red-light);color:var(--red);}
+.msg.ok{background:var(--green-light);color:var(--green);}
+.issue-title{font-size:1.3rem;font-weight:700;color:var(--navy);margin-bottom:4px;}
+.issue-meta{font-size:.78rem;color:var(--text-soft);margin-bottom:16px;}
+.issue-intro{font-size:.92rem;color:var(--text-mid);line-height:1.6;margin-bottom:8px;}
+.section-heading{font-size:1rem;font-weight:700;color:var(--navy);margin-top:22px;margin-bottom:6px;}
+.section-synthesis{font-size:.88rem;color:var(--text-mid);line-height:1.6;margin-bottom:10px;}
+.notice-list{list-style:none;}
+.notice-list li{font-size:.85rem;color:var(--text-mid);padding:6px 0;border-top:1px solid var(--border);}
+.notice-list li:first-child{border-top:none;}
+.notice-list a{color:var(--navy-light);font-weight:600;}
+.notice-list a:hover{color:var(--gold);text-decoration:underline;}
+.empty{color:var(--text-soft);font-size:.88rem;text-align:center;padding:20px 0;}
+.sub-row{display:flex;gap:10px;margin-top:8px;}
+#sub-email{flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:.9rem;outline:none;}
+#sub-email:focus{border-color:var(--gold);}
+#sub-btn{background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:10px 22px;font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+#sub-btn:hover{background:var(--navy-mid);}
+.archive-item{padding:10px 0;border-top:1px solid var(--border);font-size:.85rem;}
+.archive-item:first-child{border-top:none;}
+.archive-item a{color:var(--navy);font-weight:600;}
+.archive-item a:hover{color:var(--gold);}
+.archive-item .meta{color:var(--text-soft);font-size:.76rem;}
+footer{background:var(--navy);color:#aaa;text-align:center;padding:20px 32px;font-size:.78rem;margin-top:40px;}
+footer a{color:var(--gold);}
+</style>
+</head>
+<body>
+<header>
+  <div class="hdr-inner">
+    <div>
+      <div class="hdr-brand"><span>SA</span> Gazette Hub — Newsletter</div>
+      <div class="hdr-sub">Monthly digest of gazette notices for employers</div>
+    </div>
+    <a class="hdr-back" href="/">&larr; Back to site</a>
+  </div>
+</header>
+
+<div class="main">
+  <div id="banner"></div>
+
+  <div class="card">
+    <h2 style="font-size:1rem;color:var(--navy);margin-bottom:8px">Subscribe</h2>
+    <div style="font-size:.85rem;color:var(--text-mid)">Get the monthly digest by email — one message a month, unsubscribe anytime.</div>
+    <div class="sub-row">
+      <input id="sub-email" type="email" placeholder="you@example.com" />
+      <button id="sub-btn" onclick="subscribe()">Subscribe</button>
+    </div>
+  </div>
+
+  <div class="card" id="latest-card">
+    <div class="empty">Loading…</div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:1rem;color:var(--navy);margin-bottom:10px">Past issues</h2>
+    <div id="archive-list"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
+<footer>
+  <a href="https://arkkonsult.co.za" target="_blank">arkkonsult.co.za</a> &nbsp;|&nbsp;
+  ivorb@arkkonsult.com &nbsp;|&nbsp; +27 82 880 5316 &nbsp;|&nbsp;
+  &copy; 2025 ArkKonsult PTY Limited. All rights reserved.
+</footer>
+
+<script>
+function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderIssue(issue) {
+  if (!issue) return '<div class="empty">No newsletter has been published yet — check back soon.</div>';
+  const sections = (issue.sections || []).map(s => `
+    <div class="section-heading">${escHtml(s.categoryLabel)}</div>
+    <div class="section-synthesis">${escHtml(s.synthesis)}</div>
+    <ul class="notice-list">${(s.notices || []).map(n => `
+      <li>${escHtml(n.title)}${n.date ? ' — ' + escHtml(n.date) : ''}${n.source_url ? ` — <a href="${escHtml(n.source_url)}" target="_blank" rel="noopener">view notice ↗</a>` : ''}</li>`).join('')}
+    </ul>`).join('');
+  return `
+    <div class="issue-title">${escHtml(issue.title)}</div>
+    <div class="issue-meta">${issue.publishedAt ? new Date(issue.publishedAt).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : ''}</div>
+    <div class="issue-intro">${escHtml(issue.intro)}</div>
+    ${sections}`;
+}
+
+async function loadArchive() {
+  try {
+    const res = await fetch('/.netlify/functions/newsletters');
+    const data = await res.json();
+    document.getElementById('archive-list').innerHTML = (data.archive || []).length === 0
+      ? '<div class="empty">No past issues yet.</div>'
+      : data.archive.map(a => `<div class="archive-item"><a href="?month=${encodeURIComponent(a.month)}">${escHtml(a.title)}</a><div class="meta">${new Date(a.publishedAt).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long' })}</div></div>`).join('');
+    return data;
+  } catch (err) {
+    document.getElementById('archive-list').innerHTML = '<div class="msg err">Could not load the archive.</div>';
+    return null;
+  }
+}
+
+async function loadLatest() {
+  const data = await loadArchive();
+  document.getElementById('latest-card').innerHTML = data ? renderIssue(data.latest) : '<div class="msg err">Could not load the newsletter. Please try again.</div>';
+}
+
+async function loadSpecificMonth(month) {
+  await loadArchive();
+  try {
+    const res = await fetch('/.netlify/functions/newsletters?month=' + encodeURIComponent(month));
+    if (!res.ok) throw new Error('Not found');
+    const data = await res.json();
+    document.getElementById('latest-card').innerHTML = renderIssue(data.issue);
+  } catch (err) {
+    document.getElementById('latest-card').innerHTML = '<div class="msg err">Could not find that issue.</div>';
+  }
+}
+
+async function subscribe() {
+  const email = document.getElementById('sub-email').value.trim();
+  const btn = document.getElementById('sub-btn');
+  if (!email) return;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const res = await fetch('/.netlify/functions/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    document.getElementById('banner').innerHTML = data.alreadyConfirmed
+      ? '<div class="msg ok">You\'re already subscribed.</div>'
+      : '<div class="msg ok">Almost there — check your email and click the confirmation link.</div>';
+    document.getElementById('sub-email').value = '';
+  } catch (err) {
+    document.getElementById('banner').innerHTML = `<div class="msg err">${escHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Subscribe';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('confirmed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">Subscription confirmed — you\'re on the list.</div>';
+  else if (params.get('confirmed') === '0') document.getElementById('banner').innerHTML = '<div class="msg err">That confirmation link is invalid or has expired.</div>';
+  else if (params.get('unsubscribed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">You\'ve been unsubscribed.</div>';
+
+  const month = params.get('month');
+  if (month) loadSpecificMonth(month);
+  else loadLatest();
+
+  document.getElementById('sub-email').addEventListener('keydown', e => { if (e.key === 'Enter') subscribe(); });
+});
+</script>
+</body>
+</html>

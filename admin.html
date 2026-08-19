@@ -113,6 +113,17 @@ textarea{resize:vertical;min-height:56px;}
     <div class="hint" style="margin-bottom:10px">Categories are shown on the site in the order below (lowest number first). Turn a category off to hide it without deleting it.</div>
     <div id="cat-list"></div>
   </div>
+
+  <div class="card">
+    <h2>Monthly newsletter</h2>
+    <div class="hint" style="margin-bottom:10px">A draft is generated automatically on the 1st of each month from that month's real gazette notices. Nothing is ever emailed or published without you clicking Publish below.</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <button class="btn outline small" onclick="generateNewsletter()" id="gen-btn">&#8635; Generate / refresh draft now</button>
+    </div>
+    <div id="nl-draft"></div>
+    <h2 style="margin-top:22px">Past issues</h2>
+    <div id="nl-archive"></div>
+  </div>
 </div>
 
 <script>
@@ -138,6 +149,7 @@ async function unlock() {
   sessionStorage.setItem(PW_KEY, pw);
   document.getElementById('gate-msg').innerHTML = '';
   await loadCategories();
+  await loadNewsletter();
   document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 }
@@ -239,6 +251,76 @@ async function deleteCategory(id) {
   } catch (err) { banner(err.message, 'err'); }
 }
 
+async function nlApiCall(body) {
+  const res = await fetch('/.netlify/functions/newsletter-admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': getPw() }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+async function loadNewsletter() {
+  try {
+    const res = await fetch('/.netlify/functions/newsletter-admin', { headers: { 'x-admin-password': getPw() } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    renderNewsletter(data.draft, data.archive || []);
+  } catch (err) {
+    document.getElementById('nl-draft').innerHTML = `<div class="msg err">Could not load newsletter: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function renderNewsletter(draft, archive) {
+  const draftEl = document.getElementById('nl-draft');
+  if (!draft) {
+    draftEl.innerHTML = '<div class="empty">No draft yet. Click "Generate / refresh draft now" to build one from this month\'s notices.</div>';
+  } else {
+    const sections = (draft.sections || []).map(s => `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-weight:700;font-size:.85rem;color:var(--navy)">${escHtml(s.categoryLabel)} <span class="hint">(${s.notices.length} notice${s.notices.length === 1 ? '' : 's'})</span></div>
+        <div style="font-size:.83rem;color:var(--text-mid);margin-top:4px">${escHtml(s.synthesis)}</div>
+      </div>`).join('');
+    draftEl.innerHTML = `
+      <div class="msg ok" style="margin-bottom:10px">Draft for ${escHtml(draft.month)} — not published yet</div>
+      <div style="font-weight:700;color:var(--navy)">${escHtml(draft.title)}</div>
+      <div class="hint" style="margin-top:2px">Subject line: ${escHtml(draft.subject)}</div>
+      <div style="font-size:.85rem;margin-top:8px">${escHtml(draft.intro)}</div>
+      ${sections || '<div class="empty">No notices found this month.</div>'}
+      <button class="btn gold" style="margin-top:16px" onclick="publishNewsletter()">Publish &amp; email subscribers</button>`;
+  }
+
+  const archiveEl = document.getElementById('nl-archive');
+  archiveEl.innerHTML = archive.length === 0
+    ? '<div class="empty">No issues published yet.</div>'
+    : archive.map(a => `<div class="cat-row"><div class="info"><div class="label">${escHtml(a.title)}</div><div class="meta">${escHtml(a.month)} &middot; published ${new Date(a.publishedAt).toLocaleDateString()}</div></div></div>`).join('');
+}
+
+async function generateNewsletter() {
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating… this can take a minute';
+  try {
+    const data = await nlApiCall({ action: 'generate' });
+    renderNewsletter(data.draft, (await (await fetch('/.netlify/functions/newsletter-admin', { headers: { 'x-admin-password': getPw() } })).json()).archive || []);
+    banner('Draft generated.', 'ok');
+  } catch (err) {
+    banner(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#8635; Generate / refresh draft now';
+  }
+}
+
+async function publishNewsletter() {
+  if (!confirm('Publish this newsletter now? It will go live on the site and be emailed to every confirmed subscriber immediately.')) return;
+  try {
+    const data = await nlApiCall({ action: 'publish' });
+    banner(`Published. Emailed ${data.emailsSent} subscriber${data.emailsSent === 1 ? '' : 's'}${data.emailsFailed ? ` (${data.emailsFailed} failed)` : ''}.`, 'ok');
+    await loadNewsletter();
+  } catch (err) {
+    banner(err.message, 'err');
+  }
+}
+
 function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -246,6 +328,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const ok = await verifyPassword(getPw());
     if (ok) {
       await loadCategories();
+      await loadNewsletter();
       document.getElementById('gate').style.display = 'none';
       document.getElementById('app').style.display = 'block';
     } else {
