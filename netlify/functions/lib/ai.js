@@ -7,7 +7,11 @@
 const MODEL = 'claude-haiku-4-5-20251001';
 
 const JSON_SYSTEM = 'You are a South African government gazette expert. Output ONLY a raw JSON array. Start with [ and end with ]. '
-  + 'Each object: {"title":"string","gazette_no":"string","date":"YYYY-MM-DD","summary":"2-3 sentences","practitioner_note":"1 sentence for employers","category":"string"}. '
+  + 'Each object: {"title":"string","gazette_no":"string","date":"YYYY-MM-DD","summary":"2-3 sentences","practitioner_note":"1 sentence for employers","category":"string","source_url":"string"}. '
+  + 'For "source_url": if your web search found the actual gazette notice, PDF, or an official page describing it, use that exact URL. '
+  + 'If you could not find a specific verifiable URL for this notice, use the general official South African Government Gazette portal instead: '
+  + '"https://www.gov.za/documents/govt-gazette" — never invent or guess a specific-looking URL you did not actually see in search results, '
+  + 'since a fabricated deep link is worse than the general portal link. '
   + 'No text before or after the array. This rule applies no matter what: even if your search finds few or no results, you must still return a JSON array of '
   + '8 objects using your general knowledge of real or representative SA gazette notices for the topic and period — never explain that results were limited, '
   + 'never write a sentence like "Based on the search results", never apologise, never add markdown code fences. Your entire reply must be parseable JSON, nothing else.';
@@ -80,4 +84,3 @@ async function callAI(apiKey, userPrompt, useSearch) {
 }
 
 module.exports = { callAI, extractJsonArray, MODEL };
-
