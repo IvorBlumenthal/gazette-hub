@@ -1,62 +1,63 @@
 // netlify/functions/gazette-scheduler.js
-// Runs every Monday at 06:00 SAST (04:00 UTC) via netlify.toml cron
-// Pre-fetches gazette notices for all categories and caches them in Supabase
-// so the app loads instantly without waiting for API calls.
+// Runs every Monday at 06:00 SAST (04:00 UTC) via netlify.toml cron.
+// Pre-fetches gazette notices for every active category and caches them in
+// Supabase so the app loads instantly without waiting for a live AI call.
 //
 // Required environment variables:
-//   ANTHROPIC_API_KEY   - your Anthropic key
-//   SUPABASE_URL        - your Supabase project URL
-//   SUPABASE_SERVICE_KEY - your Supabase service_role key
+//   ANTHROPIC_API_KEY     - same key gazette.js uses
+//   SUPABASE_URL          - your Supabase project URL
+//   SUPABASE_SERVICE_KEY  - your Supabase service_role key (NOT the anon key —
+//                            this needs to be able to write to gazette_cache
+//                            for every category on a schedule, so it uses the
+//                            elevated service role rather than the public key)
+//
+// Optional:
+//   MANUAL_TRIGGER_SECRET - if set, allows a manual GET run via
+//                            ?secret=... for testing without waiting for Monday
 
-const CATEGORIES = ['labour','bbbee','regs','procurement','environment','health','tax'];
-const PERIODS = [3, 6, 12, 24];
+const { loadAll } = require('./lib/categories');
+const { callAI } = require('./lib/ai');
 
-const GAZETTE_CONTEXT = 'You are an expert on South African Government Gazettes. Return only valid JSON arrays. Each object must have: title, gazette_no, date, summary, practitioner_note, category.';
+// Matches the periods the site actually offers (see index.html's period
+// buttons) — previously this list (3/6/12/24) didn't match what the app
+// requests (1/3/6), so the cache this function built was never being read.
+const PERIODS = [1, 3, 6];
 
-const CATEGORY_PROMPTS = {
-  labour: 'List 8 real SA Government Gazette notices on Labour and Employment for the period. Include wage determinations, CCMA rules, bargaining council agreements, LRA/BCEA amendments, UIF notices.',
-  bbbee: 'List 8 real SA Government Gazette notices on B-BBEE for the period. Include Codes of Good Practice, sector charters, B-BBEE Commission notices.',
-  regs: 'List 8 real SA Government Gazette notices on Regulations and Bills for the period. Include new Bills, commencement notices, Companies Act regulations, POPIA.',
-  procurement: 'List 8 real SA Government Gazette notices on Procurement for the period. Include PPPFA regulations, National Treasury instruction notes, PFMA regulations.',
-  environment: 'List 8 real SA Government Gazette notices on Environment for the period. Include NEMA regulations, carbon tax, biodiversity, waste management.',
-  health: 'List 8 real SA Government Gazette notices on Health for the period. Include NHI notices, SAHPRA regulations, Medicines Act amendments.',
-  tax: 'List 8 real SA Government Gazette notices on Tax and Finance for the period. Include SARS rulings, tax tables, VAT thresholds, National Treasury regulations.',
-};
-
-const PERIOD_TEXT = {
-  3: 'February 2025 to May 2025',
-  6: 'November 2024 to May 2025',
-  12: 'May 2024 to May 2025',
-  24: 'May 2023 to May 2025',
-};
-
-async function fetchNotices(category, months, apiKey) {
-  const prompt = CATEGORY_PROMPTS[category] + ' Period: ' + PERIOD_TEXT[months] + '. Return the JSON array now.';
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-4-7', max_tokens: 2000, system: GAZETTE_CONTEXT, messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!resp.ok) throw new Error('Anthropic error ' + resp.status);
-  const data = await resp.json();
-  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-  const match = text.replace(/```json|```/g, '').trim().match(/\[[\s\S]*\]/);
-  return match ? JSON.parse(match[0]) : [];
+function periodLabel(months) {
+  const end = new Date();
+  const start = new Date();
+  start.setMonth(start.getMonth() - months);
+  const fmt = function (d) { return d.toLocaleString('en-US', { month: 'long', year: 'numeric' }); };
+  return fmt(start) + ' to ' + fmt(end);
 }
 
-async function upsertCache(supabaseUrl, serviceKey, category, months, notices) {
+async function fetchNotices(category, months, apiKey) {
+  const currentYear = new Date().getFullYear();
+  const prompt = 'Search for South African Government Gazette notices about ' + category.label + ' published in ' + currentYear + '. '
+    + 'Keywords: ' + category.keywords + '. Find notices from the last ' + months + ' months (' + periodLabel(months) + '). '
+    + 'Return exactly 8 notices as a JSON array starting with [ and ending with ]. '
+    + 'Use web search results for real notices, supplement with your knowledge to reach 8. '
+    + 'Set category field to "' + category.id + '" for all entries.';
+  return callAI(apiKey, prompt, true);
+}
+
+async function upsertCache(supabaseUrl, serviceKey, categoryId, months, notices) {
   const resp = await fetch(supabaseUrl + '/rest/v1/gazette_cache', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': serviceKey,
-      'Authorization': 'Bearer ' + serviceKey,
-      'Prefer': 'resolution=merge-duplicates',
+      apikey: serviceKey,
+      Authorization: 'Bearer ' + serviceKey,
+      Prefer: 'resolution=merge-duplicates',
     },
     body: JSON.stringify({
-      category,
-      months,
-      notices: JSON.stringify(notices),
+      category: categoryId,
+      months: months,
+      // NOTE: notices is passed as a real array here, not JSON.stringify()'d.
+      // The previous version double-encoded this into a string, which meant
+      // gazette.js's Array.isArray(rows[0].notices) cache-read check always
+      // failed silently and the cache was never actually being used.
+      notices: notices,
       updated_at: new Date().toISOString(),
     }),
   });
@@ -69,35 +70,45 @@ exports.handler = async (event) => {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
   if (!apiKey || !supabaseUrl || !serviceKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'Missing environment variables' }) };
+    const missing = [
+      !apiKey && 'ANTHROPIC_API_KEY',
+      !supabaseUrl && 'SUPABASE_URL',
+      !serviceKey && 'SUPABASE_SERVICE_KEY',
+    ].filter(Boolean).join(', ');
+    console.error('Gazette scheduler cannot run — missing environment variable(s):', missing);
+    return { statusCode: 500, body: JSON.stringify({ error: 'Missing environment variable(s): ' + missing }) };
   }
 
-  // Allow manual trigger for testing
+  // Allow manual trigger for testing, guarded by a secret so this can't be
+  // used to run up the Anthropic bill by anyone who finds the URL.
   const isManual = event.httpMethod === 'GET';
-  if (isManual && event.queryStringParameters?.secret !== process.env.MANUAL_TRIGGER_SECRET) {
-    return { statusCode: 401, body: 'Unauthorised' };
+  if (isManual) {
+    if (!process.env.MANUAL_TRIGGER_SECRET || event.queryStringParameters?.secret !== process.env.MANUAL_TRIGGER_SECRET) {
+      return { statusCode: 401, body: 'Unauthorised' };
+    }
   }
 
+  const categories = (await loadAll()).filter(function (c) { return c.active !== false; });
   const results = [];
-  console.log('Gazette scheduler started:', new Date().toISOString());
+  console.log('Gazette scheduler started:', new Date().toISOString(), '—', categories.length, 'active categories');
 
-  for (const category of CATEGORIES) {
+  for (const category of categories) {
     for (const months of PERIODS) {
       try {
-        console.log(`Fetching ${category} / ${months} months...`);
+        console.log('Fetching ' + category.id + ' / ' + months + ' months...');
         const notices = await fetchNotices(category, months, apiKey);
-        const saved = await upsertCache(supabaseUrl, serviceKey, category, months, notices);
-        results.push({ category, months, count: notices.length, saved });
-        console.log(`  Done: ${notices.length} notices`);
-        // Delay between calls to avoid rate limits
-        await new Promise(r => setTimeout(r, 2000));
+        const saved = await upsertCache(supabaseUrl, serviceKey, category.id, months, notices);
+        results.push({ category: category.id, months: months, count: notices.length, saved: saved });
+        console.log('  Done: ' + notices.length + ' notices, saved=' + saved);
+        // Small delay between calls to stay well clear of rate limits.
+        await new Promise(function (r) { setTimeout(r, 2000); });
       } catch (e) {
-        console.error(`  Error for ${category}/${months}:`, e.message);
-        results.push({ category, months, error: e.message });
+        console.error('  Error for ' + category.id + '/' + months + ':', e.message);
+        results.push({ category: category.id, months: months, error: e.message });
       }
     }
   }
 
   console.log('Scheduler complete:', results.length, 'combinations processed');
-  return { statusCode: 200, body: JSON.stringify({ processed: results.length, results }) };
+  return { statusCode: 200, body: JSON.stringify({ processed: results.length, results: results }) };
 };
