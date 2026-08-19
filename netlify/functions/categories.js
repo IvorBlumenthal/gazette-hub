@@ -1,95 +1,55 @@
-// netlify/functions/categories.js
-// GET  -> public, returns the list of active gazette categories (used by index.html)
-// POST/PUT/DELETE -> admin only, requires header x-admin-password matching
-//                     the ADMIN_PASSWORD environment variable. Used by admin.html
-//                     to create, edit, and remove categories without a code change.
+// netlify/functions/lib/categories.js
+// Shared helper for reading/writing the gazette category list.
+// Categories are stored in a Netlify Blobs store so they can be managed
+// at runtime from the admin panel, with no database or redeploy needed.
 
-const { loadAll, saveAll, slugify } = require('./lib/categories');
+const { getBlobStore } = require('./blobStore');
 
-exports.handler = async (event) => {
-  const headers = { 'Content-Type': 'application/json' };
+const STORE_NAME = 'gazette-categories';
+const KEY = 'categories';
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+// Seed data — matches the categories the app originally shipped with, plus
+// "Bargaining Councils & Agreements" added on 2026-08-19. Only used to
+// initialise the store the first time it's read; after that, the blob
+// store is the source of truth and this constant is not consulted again.
+const DEFAULT_CATEGORIES = [
+  { id: 'labour', icon: '⚖️', label: 'Labour & Employment', keywords: 'Labour Employment wage determinations CCMA employment equity sectoral UIF 2025 2026', sortOrder: 10, active: true },
+  { id: 'tax', icon: '🏛️', label: 'Tax & Revenue', keywords: 'SARS tax National Treasury VAT customs income tax amendments 2025 2026', sortOrder: 20, active: true },
+  { id: 'bbbee', icon: '🤝', label: 'B-BBEE & Transformation', keywords: 'B-BBEE transformation codes charters verification DTI empowerment 2025 2026', sortOrder: 30, active: true },
+  { id: 'regs', icon: '📋', label: 'Company Regulations', keywords: 'Companies Act CIPC business regulations licensing consumer protection 2025 2026', sortOrder: 40, active: true },
+  { id: 'procurement', icon: '🏗️', label: 'Government Procurement', keywords: 'government procurement PFMA supply chain preferential Treasury 2025 2026', sortOrder: 50, active: true },
+  { id: 'environment', icon: '🌿', label: 'Environment & Sustainability', keywords: 'NEMA environmental impact waste management carbon tax 2025 2026', sortOrder: 60, active: true },
+  { id: 'health', icon: '🏥', label: 'Health & OHS', keywords: 'OHS occupational health NHI pharmaceutical workplace safety 2025 2026', sortOrder: 70, active: true },
+  { id: 'bargaining', icon: '📑', label: 'Bargaining Councils & Agreements', keywords: 'bargaining council collective agreements main agreement extension sectoral determination gazetted 2025 2026', sortOrder: 80, active: true },
+];
 
-  if (event.httpMethod === 'GET' && event.queryStringParameters && event.queryStringParameters.verify === '1') {
-    // Used by admin.html to check a password before showing the admin UI.
-    // Does not read or write category data.
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword) return { statusCode: 500, headers, body: JSON.stringify({ error: 'ADMIN_PASSWORD is not configured on the server.' }) };
-    const supplied = event.headers['x-admin-password'] || event.headers['X-Admin-Password'];
-    if (supplied !== adminPassword) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid admin password' }) };
-    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
-  }
+function store() {
+  return getBlobStore(STORE_NAME);
+}
 
-  if (event.httpMethod === 'GET') {
-    const all = await loadAll();
-    const includeInactive = event.queryStringParameters && event.queryStringParameters.all === '1';
-    const list = (includeInactive ? all : all.filter(function (c) { return c.active !== false; }))
-      .slice()
-      .sort(function (a, b) { return (a.sortOrder || 0) - (b.sortOrder || 0); });
-    return { statusCode: 200, headers, body: JSON.stringify({ categories: list }) };
-  }
+async function loadAll() {
+  const data = await store().get(KEY, { type: 'json' });
+  if (data && Array.isArray(data) && data.length > 0) return data;
+  await store().setJSON(KEY, DEFAULT_CATEGORIES);
+  return DEFAULT_CATEGORIES.slice();
+}
 
-  if (event.httpMethod === 'POST' || event.httpMethod === 'PUT' || event.httpMethod === 'DELETE') {
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword) {
-      return { statusCode: 500, headers, body: JSON.stringify({ error: 'ADMIN_PASSWORD is not configured on the server. Add it in Netlify environment variables to enable the admin panel.' }) };
-    }
-    const supplied = event.headers['x-admin-password'] || event.headers['X-Admin-Password'];
-    if (supplied !== adminPassword) {
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid admin password' }) };
-    }
+async function saveAll(list) {
+  await store().setJSON(KEY, list);
+}
 
-    let body;
-    try { body = JSON.parse(event.body || '{}'); }
-    catch (e) { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
+async function findById(id) {
+  const all = await loadAll();
+  return all.find(function (c) { return c.id === id; }) || null;
+}
 
-    const list = await loadAll();
+function slugify(s) {
+  return String(s || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-+|-+$)/g, '')
+    .slice(0, 40);
+}
 
-    if (event.httpMethod === 'POST') {
-      const label = (body.label || '').trim();
-      const keywords = (body.keywords || '').trim();
-      if (!label || !keywords) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'label and keywords are required' }) };
-      }
-      const id = slugify(body.id || label);
-      if (!id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Could not derive a valid id from that label' }) };
-      if (list.some(function (c) { return c.id === id; })) {
-        return { statusCode: 409, headers, body: JSON.stringify({ error: 'A category with id "' + id + '" already exists' }) };
-      }
-      const maxOrder = list.reduce(function (m, c) { return Math.max(m, c.sortOrder || 0); }, 0);
-      const newCat = { id: id, icon: (body.icon || '📄').trim(), label: label, keywords: keywords, sortOrder: maxOrder + 10, active: true };
-      list.push(newCat);
-      await saveAll(list);
-      return { statusCode: 200, headers, body: JSON.stringify({ categories: list, created: newCat }) };
-    }
-
-    if (event.httpMethod === 'PUT') {
-      const id = body.id;
-      const idx = list.findIndex(function (c) { return c.id === id; });
-      if (idx === -1) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Category not found' }) };
-      const existing = list[idx];
-      list[idx] = {
-        id: existing.id,
-        label: body.label !== undefined ? String(body.label).trim() : existing.label,
-        icon: body.icon !== undefined ? String(body.icon).trim() : existing.icon,
-        keywords: body.keywords !== undefined ? String(body.keywords).trim() : existing.keywords,
-        sortOrder: body.sortOrder !== undefined ? Number(body.sortOrder) : existing.sortOrder,
-        active: body.active !== undefined ? !!body.active : existing.active,
-      };
-      await saveAll(list);
-      return { statusCode: 200, headers, body: JSON.stringify({ categories: list }) };
-    }
-
-    if (event.httpMethod === 'DELETE') {
-      const id = (event.queryStringParameters && event.queryStringParameters.id) || body.id;
-      const idx = list.findIndex(function (c) { return c.id === id; });
-      if (idx === -1) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Category not found' }) };
-      list.splice(idx, 1);
-      await saveAll(list);
-      return { statusCode: 200, headers, body: JSON.stringify({ categories: list }) };
-    }
-  }
-
-  return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
-};
+module.exports = { loadAll, saveAll, findById, slugify, DEFAULT_CATEGORIES };
