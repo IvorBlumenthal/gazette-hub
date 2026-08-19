@@ -60,6 +60,8 @@ header{background:var(--navy);color:#fff;padding:0 32px;}
 .notice-meta .gaz-no{color:var(--gold);font-weight:600;}
 .notice-summary{font-size:.83rem;color:var(--text-mid);line-height:1.6;margin-bottom:8px;}
 .notice-note{font-size:.78rem;background:var(--green-light);color:var(--green);border-left:3px solid var(--green);padding:6px 10px;border-radius:0 var(--radius) var(--radius) 0;}
+.notice-link{display:inline-block;font-size:.78rem;font-weight:600;color:var(--navy-light);margin-top:8px;}
+.notice-link:hover{text-decoration:underline;color:var(--gold);}
 .spinner{text-align:center;padding:28px;color:var(--text-soft);font-size:.88rem;}
 .spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -212,6 +214,7 @@ function renderNotices(notices) {
       <div class="notice-meta"><span class="gaz-no">${escHtml(n.gazette_no || '')}</span><span>${escHtml(n.date || '')}</span></div>
       <div class="notice-summary">${escHtml(n.summary || '')}</div>
       ${n.practitioner_note ? `<div class="notice-note">📌 ${escHtml(n.practitioner_note)}</div>` : ''}
+      ${n.source_url ? `<a class="notice-link" href="${escHtml(n.source_url)}" target="_blank" rel="noopener">View full notice ↗</a>` : ''}
     </div>`).join('');
 }
 function spinner(msg) { return `<div class="spinner"><span class="spin"></span>${msg}</div>`; }
