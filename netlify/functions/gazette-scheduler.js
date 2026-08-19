@@ -1,22 +1,26 @@
 // netlify/functions/gazette-scheduler.js
 // Runs every Monday at 06:00 SAST (04:00 UTC) via netlify.toml cron.
 // Pre-fetches gazette notices for every active category and caches them in
-// Supabase so the app loads instantly without waiting for a live AI call.
+// Netlify Blobs so the app loads instantly without waiting for a live AI
+// call.
 //
 // Required environment variables:
-//   ANTHROPIC_API_KEY     - same key gazette.js uses
-//   SUPABASE_URL          - your Supabase project URL
-//   SUPABASE_SERVICE_KEY  - your Supabase service_role key (NOT the anon key —
-//                            this needs to be able to write to gazette_cache
-//                            for every category on a schedule, so it uses the
-//                            elevated service role rather than the public key)
+//   ANTHROPIC_API_KEY - same key gazette.js uses
+//   BLOBS_TOKEN        - same Netlify personal access token gazette.js and
+//                         categories.js use for Blobs access (see lib/blobStore.js)
 //
 // Optional:
 //   MANUAL_TRIGGER_SECRET - if set, allows a manual GET run via
 //                            ?secret=... for testing without waiting for Monday
+//
+// Note: this previously cached to a Supabase project, which was found to
+// have been deleted (see commit history) — it now shares the same Netlify
+// Blobs cache that gazette.js reads from, so there's no separate external
+// account to keep alive.
 
 const { loadAll } = require('./lib/categories');
 const { callAI } = require('./lib/ai');
+const { setCached } = require('./lib/cache');
 
 // Matches the periods the site actually offers (see index.html's period
 // buttons) — previously this list (3/6/12/24) didn't match what the app
@@ -41,42 +45,12 @@ async function fetchNotices(category, months, apiKey) {
   return callAI(apiKey, prompt, true);
 }
 
-async function upsertCache(supabaseUrl, serviceKey, categoryId, months, notices) {
-  const resp = await fetch(supabaseUrl + '/rest/v1/gazette_cache', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: serviceKey,
-      Authorization: 'Bearer ' + serviceKey,
-      Prefer: 'resolution=merge-duplicates',
-    },
-    body: JSON.stringify({
-      category: categoryId,
-      months: months,
-      // NOTE: notices is passed as a real array here, not JSON.stringify()'d.
-      // The previous version double-encoded this into a string, which meant
-      // gazette.js's Array.isArray(rows[0].notices) cache-read check always
-      // failed silently and the cache was never actually being used.
-      notices: notices,
-      updated_at: new Date().toISOString(),
-    }),
-  });
-  return resp.ok;
-}
-
 exports.handler = async (event) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
-  if (!apiKey || !supabaseUrl || !serviceKey) {
-    const missing = [
-      !apiKey && 'ANTHROPIC_API_KEY',
-      !supabaseUrl && 'SUPABASE_URL',
-      !serviceKey && 'SUPABASE_SERVICE_KEY',
-    ].filter(Boolean).join(', ');
-    console.error('Gazette scheduler cannot run — missing environment variable(s):', missing);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Missing environment variable(s): ' + missing }) };
+  if (!apiKey) {
+    console.error('Gazette scheduler cannot run — missing ANTHROPIC_API_KEY');
+    return { statusCode: 500, body: JSON.stringify({ error: 'Missing environment variable: ANTHROPIC_API_KEY' }) };
   }
 
   // Allow manual trigger for testing, guarded by a secret so this can't be
@@ -97,7 +71,7 @@ exports.handler = async (event) => {
       try {
         console.log('Fetching ' + category.id + ' / ' + months + ' months...');
         const notices = await fetchNotices(category, months, apiKey);
-        const saved = await upsertCache(supabaseUrl, serviceKey, category.id, months, notices);
+        const saved = await setCached(category.id, months, notices);
         results.push({ category: category.id, months: months, count: notices.length, saved: saved });
         console.log('  Done: ' + notices.length + ' notices, saved=' + saved);
         // Small delay between calls to stay well clear of rate limits.
