@@ -30,6 +30,7 @@ exports.handler = async (event) => {
       + 'Focus on notices published in ' + currentYear + ' and the last ' + months + ' months. '
       + 'Include notices from any category: labour, tax, B-BBEE, regulations, procurement, environment, health, bargaining councils. '
       + 'Return exactly 8 matching notices as a JSON array starting with [ and ending with ]. '
+      + 'For each notice, include the real source URL you found it at if possible — the user needs to be able to click through and read the full official notice. '
       + 'Use your knowledge of SA gazette patterns to supplement if web search finds fewer than 8.';
     try {
       const notices = await callAI(apiKey, prompt, true);
@@ -66,6 +67,7 @@ exports.handler = async (event) => {
     + 'Keywords: ' + keywords + '. Find notices from the last ' + months + ' months. '
     + 'Return exactly 8 notices as a JSON array starting with [ and ending with ]. '
     + 'Use web search results for real notices, supplement with your knowledge to reach 8. '
+    + 'For each notice, include the real source URL you found it at if possible — the user needs to be able to click through and read the full official notice. '
     + 'Set category field to "' + categoryId + '" for all entries.';
 
   let notices = [];
