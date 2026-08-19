@@ -19,6 +19,13 @@ const JSON_SYSTEM = 'You are a South African government gazette expert. Output O
 const RETRY_NOTE = '\n\nIMPORTANT: Your previous attempt did not return valid JSON. This time, respond with ONLY the JSON array — no introductory sentence, '
   + 'no explanation of search results, no markdown fences. Start your reply with the character [ and end it with ].';
 
+// How long to wait for a single Anthropic API call before giving up on it and
+// moving on. Without this, a single hung request (rare, but it happens) could
+// silently eat the scheduler's entire 15-minute budget and leave most
+// categories without a fresh cache for the week — worse than one category
+// failing on its own.
+const REQUEST_TIMEOUT_MS = 45000;
+
 function extractJsonArray(text) {
   const si = text.indexOf('[');
   const ei = text.lastIndexOf(']');
@@ -44,11 +51,23 @@ async function callAIOnce(apiKey, userPrompt, useSearch, maxTokens) {
   };
   if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 1 }];
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Anthropic request timed out after ' + (REQUEST_TIMEOUT_MS / 1000) + 's');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) throw new Error('Anthropic HTTP ' + res.status + ': ' + (await res.text()).slice(0, 200));
   const data = await res.json();
   const text = (data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
