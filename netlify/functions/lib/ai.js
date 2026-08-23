@@ -4,14 +4,13 @@
 // gazette-scheduler.js (weekly cache warm-up), so the same reliability
 // fixes apply everywhere instead of drifting between the two.
 
+const { verifyNoticeLinks } = require('./verifyLinks');
+
 const MODEL = 'claude-haiku-4-5-20251001';
 
 const JSON_SYSTEM = 'You are a South African government gazette expert. Output ONLY a raw JSON array. Start with [ and end with ]. '
-  + 'Each object: {"title":"string","gazette_no":"string","date":"YYYY-MM-DD","summary":"2-3 sentences","practitioner_note":"1 sentence for employers","category":"string","source_url":"string"}. '
-  + 'For "source_url": if your web search found the actual gazette notice, PDF, or an official page describing it, use that exact URL. '
-  + 'If you could not find a specific verifiable URL for this notice, use the general official South African Government Gazette portal instead: '
-  + '"https://www.gov.za/documents/govt-gazette" — never invent or guess a specific-looking URL you did not actually see in search results, '
-  + 'since a fabricated deep link is worse than the general portal link. '
+  + 'Each object: {"title":"string","gazette_no":"string - digits only, the actual government gazette number, e.g. \\"55238\\" — this is used to look up and verify the real document, so accuracy here matters more than any other field","date":"YYYY-MM-DD","summary":"2-3 sentences","practitioner_note":"1 sentence for employers","category":"string","source_url":"string"}. '
+  + 'For "source_url", give your best guess of a source if you have one — but note this field is only a hint: the application independently verifies every notice against the real gazette number before showing any link, so never fabricate a convincing-looking URL, and never worry if you cannot find one. '
   + 'No text before or after the array. This rule applies no matter what: even if your search finds few or no results, you must still return a JSON array of '
   + '8 objects using your general knowledge of real or representative SA gazette notices for the topic and period — never explain that results were limited, '
   + 'never write a sentence like "Based on the search results", never apologise, never add markdown code fences. Your entire reply must be parseable JSON, nothing else.';
@@ -109,7 +108,13 @@ async function callAI(apiKey, userPrompt, useSearch) {
     try {
       const text = await callAIOnce(apiKey, JSON_SYSTEM, attempt.prompt, attempt.search, attempt.maxTokens);
       const parsed = extractJsonArray(text);
-      if (parsed) return parsed;
+      // Before handing notices back to any caller, replace the AI's guessed
+      // source_url with a REAL link verified against gazettes.africa's own
+      // index (see lib/gazetteIndex.js), or null if none is found. Doing
+      // this here, once, means every caller of callAI — the live search,
+      // the Monday scheduler, the Friday alert, the newsletter builder —
+      // gets verified links automatically.
+      if (parsed) return await verifyNoticeLinks(parsed);
       lastErr = new Error('No JSON array found. Got: ' + text.slice(0, 150));
     } catch (err) {
       lastErr = err;
