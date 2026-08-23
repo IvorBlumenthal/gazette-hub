@@ -52,6 +52,17 @@ exports.handler = async (event) => {
         clearTimeout(timer);
       }
       const body = await res.text();
+      // Test both an absolute-URL pattern and a relative-href pattern —
+      // if the page uses relative hrefs (e.g. href="/akn/za/...") instead
+      // of full https://gazettes.africa/akn/za/... links, the absolute
+      // pattern silently matches nothing even though the real links are
+      // right there in the HTML.
+      const ABS_RE = /https:\/\/gazettes\.africa\/akn\/za\/officialGazette\/([a-z0-9-]+)\/(\d{4}-\d{2}-\d{2})\/([0-9]+(?:-part-\d+)?)\/eng@\2/g;
+      const REL_RE = /(?:href=["'])(\/akn\/za\/officialGazette\/([a-z0-9-]+)\/(\d{4}-\d{2}-\d{2})\/([0-9]+(?:-part-\d+)?)\/eng@\3)["']/g;
+      const absMatches = (body.match(ABS_RE) || []).length;
+      const relMatches = (body.match(REL_RE) || []).length;
+      const firstRel = REL_RE.exec(body);
+      REL_RE.lastIndex = 0;
       return {
         statusCode: 200,
         headers,
@@ -60,9 +71,11 @@ exports.handler = async (event) => {
           upstreamStatus: res.status,
           upstreamOk: res.ok,
           bodyLength: body.length,
-          bodySnippet: body.slice(0, 600),
           containsAknLink: body.indexOf('/akn/za/officialGazette/') !== -1,
-          looksLikeChallenge: /just a moment|cf-browser-verification|challenge-platform|enable javascript/i.test(body),
+          looksLikeChallenge: /just a moment|cf-browser-verification|challenge-platform/i.test(body),
+          absoluteUrlMatches: absMatches,
+          relativeHrefMatches: relMatches,
+          firstRelativeMatch: firstRel ? firstRel[1] : null,
         }),
       };
     } catch (err) {
