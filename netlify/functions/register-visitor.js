@@ -10,6 +10,13 @@
 // subscription stays a distinct, double opt-in action.
 
 const { isValidEmail, isValidPhone, addVisitor } = require('./lib/visitors');
+const { checkRateLimit } = require('./lib/rateLimit');
+
+// A real visitor only submits this once. Generous limit accounts for a
+// shared office IP with several people registering close together, while
+// still stopping a script from flooding the visitor list with junk.
+const RATE_LIMIT_MAX = 8;
+const RATE_LIMIT_WINDOW_SECONDS = 600; // 10 minutes
 
 exports.handler = async (event) => {
   const headers = {
@@ -20,6 +27,11 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+
+  const rate = await checkRateLimit(event, 'register-visitor', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+  if (!rate.allowed) {
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many attempts — please wait a few minutes and try again.' }) };
+  }
 
   let body;
   try { body = JSON.parse(event.body || '{}'); }
