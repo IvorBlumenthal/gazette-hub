@@ -17,10 +17,19 @@
 [functions."newsletter-admin"]
   timeout = 60
 
+[functions."gazette-alert"]
+  timeout = 900
+
 # Runs every Monday at 04:00 UTC = 06:00 SAST
 [[scheduled-functions]]
   name = "gazette-scheduler"
   cron = "0 4 * * 1"
+
+# Runs every Friday at 04:00 UTC = 06:00 SAST — flags new notices since last
+# week's scan and emails a summary (only if something's actually new).
+[[scheduled-functions]]
+  name = "gazette-alert"
+  cron = "0 4 * * 5"
 
 # Runs on the 1st of every month at 05:00 UTC = 07:00 SAST
 [[scheduled-functions]]
