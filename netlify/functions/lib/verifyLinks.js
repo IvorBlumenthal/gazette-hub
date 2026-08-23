@@ -26,8 +26,31 @@ const { getVerifiedUrl } = require('./gazetteIndex');
 
 const LIVE_CHECK_TIMEOUT_MS = 8000;
 
+// A URL that loads successfully isn't the same as a URL that points at the
+// actual notice — "https://www.gpwonline.co.za" (no path at all) loads
+// just fine and is completely useless as a "View full notice" link. This
+// rejects anything that's just a bare domain / homepage before it's even
+// worth spending a network request to check.
+function looksLikeSpecificDocument(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    return false;
+  }
+  const path = parsed.pathname.replace(/\/+$/, ''); // strip trailing slash(es)
+  if (path.length === 0) return false; // bare domain root
+  // A single short path segment (e.g. "/gazettes" or "/documents") reads
+  // as a generic section of a site, not a specific notice — require
+  // something with a bit more substance, which real document URLs
+  // (PDF filenames, deep AKN paths, numbered notice pages) always have.
+  if (path.length < 10) return false;
+  return true;
+}
+
 async function liveVerify(url) {
   if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return false;
+  if (!looksLikeSpecificDocument(url)) return false;
   const controller = new AbortController();
   const timer = setTimeout(function () { controller.abort(); }, LIVE_CHECK_TIMEOUT_MS);
   try {
