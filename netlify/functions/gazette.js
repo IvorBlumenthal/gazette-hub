@@ -31,6 +31,29 @@ exports.handler = async (event) => {
   try { reqBody = JSON.parse(event.body || '{}'); }
   catch (e) { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
+  // Temporary diagnostic: confirms the gazettes.africa index lookup (see
+  // lib/gazetteIndex.js) is actually finding real gazettes in production,
+  // without needing server log access. Read-only, no AI call, no side
+  // effects — safe to leave in, and safe to remove later once confirmed.
+  if (reqBody.debugGazetteIndex) {
+    const { getYearIndex } = require('./lib/gazetteIndex');
+    const year = String(reqBody.debugGazetteIndex);
+    const index = await getYearIndex(year);
+    const keys = Object.keys(index);
+    const testNumber = reqBody.debugNumber ? String(reqBody.debugNumber).replace(/[^0-9]/g, '') : null;
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        year: year,
+        entryCount: keys.length,
+        sampleEntries: keys.slice(0, 5).map(function (k) { return { number: k, url: index[k].url }; }),
+        testNumberFound: testNumber ? !!index[testNumber] : null,
+        testNumberEntry: testNumber ? (index[testNumber] || null) : null,
+      }),
+    };
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not set' }) };
 
