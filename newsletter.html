@@ -53,9 +53,37 @@ header{background:var(--navy);color:#fff;padding:0 32px;}
 .archive-item .meta{color:var(--text-soft);font-size:.76rem;}
 footer{background:var(--navy);color:#aaa;text-align:center;padding:20px 32px;font-size:.78rem;margin-top:40px;}
 footer a{color:var(--gold);}
+.gate-overlay{position:fixed;inset:0;background:var(--cream);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999;overflow-y:auto;}
+.gate-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;max-width:420px;width:100%;}
+.gate-card h1{font-size:1.15rem;color:var(--navy);margin-bottom:6px;}
+.gate-sub{font-size:.85rem;color:var(--text-mid);margin-bottom:18px;line-height:1.5;}
+.gate-card label{display:block;font-size:.78rem;font-weight:600;color:var(--text-mid);margin-bottom:4px;margin-top:12px;}
+.gate-card label:first-of-type{margin-top:0;}
+.gate-card input[type=text],.gate-card input[type=email],.gate-card input[type=tel]{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:.88rem;outline:none;font-family:inherit;}
+.gate-card input:focus{border-color:var(--gold);}
+.gate-btn{background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:11px 20px;font-size:.88rem;font-weight:600;cursor:pointer;width:100%;margin-top:16px;}
+.gate-btn:hover{background:var(--navy-mid);}
+.gate-hint{font-size:.72rem;color:var(--text-soft);margin-top:12px;line-height:1.5;}
+.gate-err{background:var(--red-light);color:var(--red);border-radius:var(--radius);padding:8px 12px;font-size:.8rem;margin-top:12px;}
 </style>
 </head>
 <body>
+<div class="gate-overlay" id="access-gate">
+  <div class="gate-card">
+    <h1>Welcome to SA Gazette Hub</h1>
+    <div class="gate-sub">Before you browse, please share a few details with ArkKonsult. It only takes a moment, and you won't be asked again on this device.</div>
+    <label for="gate-company">Company name</label>
+    <input type="text" id="gate-company" placeholder="Your company" />
+    <label for="gate-email">Email address</label>
+    <input type="email" id="gate-email" placeholder="you@example.com" />
+    <label for="gate-phone">Cellphone number</label>
+    <input type="tel" id="gate-phone" placeholder="e.g. 082 123 4567" />
+    <button class="gate-btn" id="gate-btn" onclick="submitGate()">Continue to site</button>
+    <div id="gate-err"></div>
+    <div class="gate-hint">Your details are used only to administer access to this site and will not be added to our email newsletter unless you separately subscribe to it.</div>
+  </div>
+</div>
+<div id="site-content" style="display:none">
 <header>
   <div class="hdr-inner">
     <div>
@@ -93,6 +121,7 @@ footer a{color:var(--gold);}
   ivorb@arkkonsult.com &nbsp;|&nbsp; +27 82 880 5316 &nbsp;|&nbsp;
   &copy; 2025 ArkKonsult PTY Limited. All rights reserved.
 </footer>
+</div>
 
 <script>
 function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -165,7 +194,7 @@ async function subscribe() {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+function initSite() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('confirmed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">Subscription confirmed — you\'re on the list.</div>';
   else if (params.get('confirmed') === '0') document.getElementById('banner').innerHTML = '<div class="msg err">That confirmation link is invalid or has expired.</div>';
@@ -176,6 +205,55 @@ window.addEventListener('DOMContentLoaded', () => {
   else loadLatest();
 
   document.getElementById('sub-email').addEventListener('keydown', e => { if (e.key === 'Enter') subscribe(); });
+}
+
+// ── Access gate ──────────────────────────────────────────────
+// Visitors must register (company, email, cellphone) once per browser
+// before the site content becomes visible. See register-visitor.js. Shares
+// the same localStorage key as index.html, so registering on either page
+// covers both.
+const GATE_KEY = 'gazette_registered';
+
+function showSite() {
+  document.getElementById('access-gate').style.display = 'none';
+  document.getElementById('site-content').style.display = 'block';
+  initSite();
+}
+
+async function submitGate() {
+  const company = document.getElementById('gate-company').value.trim();
+  const email = document.getElementById('gate-email').value.trim();
+  const phone = document.getElementById('gate-phone').value.trim();
+  const errEl = document.getElementById('gate-err');
+  errEl.innerHTML = '';
+  if (!company || !email || !phone) {
+    errEl.innerHTML = '<div class="gate-err">Please fill in all three fields.</div>';
+    return;
+  }
+  const btn = document.getElementById('gate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Please wait…';
+  try {
+    const res = await fetch('/.netlify/functions/register-visitor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, phone, company, page: location.pathname }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    localStorage.setItem(GATE_KEY, '1');
+    showSite();
+  } catch (err) {
+    errEl.innerHTML = `<div class="gate-err">${escHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continue to site';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem(GATE_KEY) === '1') { showSite(); return; }
+  document.getElementById('gate-phone').addEventListener('keydown', e => { if (e.key === 'Enter') submitGate(); });
 });
 </script>
 </body>
