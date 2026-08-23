@@ -31,6 +31,49 @@ exports.handler = async (event) => {
   try { reqBody = JSON.parse(event.body || '{}'); }
   catch (e) { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
+  // Temporary diagnostic: does a completely raw, uncached fetch of the
+  // gazettes.africa year-index page and reports exactly what came back —
+  // used to tell apart a network failure from a bot-check/challenge page
+  // from genuinely empty content, none of which are visible from outside
+  // without this. Safe to remove once the real cause is confirmed.
+  if (reqBody.debugRawFetch) {
+    const year = String(reqBody.debugRawFetch);
+    const url = 'https://gazettes.africa/gazettes/za/' + year;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(function () { controller.abort(); }, 25000);
+      let res;
+      try {
+        res = await fetch(url, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ArkKonsultGazetteHub/1.0; +https://gazette-hub.netlify.app)' },
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+      const body = await res.text();
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          fetchedUrl: url,
+          upstreamStatus: res.status,
+          upstreamOk: res.ok,
+          bodyLength: body.length,
+          bodySnippet: body.slice(0, 600),
+          containsAknLink: body.indexOf('/akn/za/officialGazette/') !== -1,
+          looksLikeChallenge: /just a moment|cf-browser-verification|challenge-platform|enable javascript/i.test(body),
+        }),
+      };
+    } catch (err) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ fetchedUrl: url, fetchThrew: true, errorName: err.name, errorMessage: err.message }),
+      };
+    }
+  }
+
   // Temporary diagnostic: confirms the gazettes.africa index lookup (see
   // lib/gazetteIndex.js) is actually finding real gazettes in production,
   // without needing server log access. Read-only, no AI call, no side
