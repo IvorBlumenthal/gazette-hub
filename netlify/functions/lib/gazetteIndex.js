@@ -132,7 +132,13 @@ async function getYearIndex(year) {
     console.error('Gazette index read:', e.message);
   }
 
-  const isFresh = cached && cached.fetchedAt && (Date.now() - cached.fetchedAt) < INDEX_MAX_AGE_MS;
+  // A cached index with zero entries is never treated as "fresh" — it can
+  // only mean an earlier fetch got a bot-check page instead of the real
+  // one (this happened once, before fetchYearIndex guarded against it),
+  // and there's no reason to keep serving that for up to a week when a
+  // fresh attempt might well succeed right now.
+  const cachedHasEntries = cached && cached.byNumber && Object.keys(cached.byNumber).length > 0;
+  const isFresh = cachedHasEntries && cached.fetchedAt && (Date.now() - cached.fetchedAt) < INDEX_MAX_AGE_MS;
   if (isFresh) return cached.byNumber;
 
   try {
