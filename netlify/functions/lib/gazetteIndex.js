@@ -18,24 +18,35 @@
 // robots.txt allows that page to be crawled. We never fetch the
 // individual document pages server-side; those are opened directly by a
 // person in their own browser, exactly like any other link on the web.
-// The index page is large (roughly 1MB for a full year) and doesn't
-// change retroactively, so it's cached in Blobs and only re-fetched about
-// once a week.
+//
+// gazettes.africa sits behind bot-protection that intermittently returns a
+// 403 challenge page instead of the real index, even for this allowed
+// page — confirmed by testing directly against production. This module is
+// built around that reality rather than assuming a clean fetch: it retries
+// once, it never lets a blocked or empty fetch overwrite a previously good
+// cached index, and a stale-but-real index is always preferred over an
+// empty one. The practical effect is that link coverage can vary run to
+// run, but a link that IS shown is always real — links are still never
+// guessed.
 
 const { getBlobStore } = require('./blobStore');
 
 const STORE_NAME = 'gazette-index';
 const INDEX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const FETCH_TIMEOUT_MS = 25000;
+const RETRY_DELAY_MS = 2000;
 
 function store() {
   return getBlobStore(STORE_NAME);
 }
 
-// Matches every <a href="https://gazettes.africa/akn/za/officialGazette/...">
-// on the yearly index page, capturing the gazette-series slug, the ISO
-// date, and the gazette number (which may carry a "-part-1" style suffix).
-const LINK_RE = /https:\/\/gazettes\.africa\/akn\/za\/officialGazette\/([a-z0-9-]+)\/(\d{4}-\d{2}-\d{2})\/([0-9]+(?:-part-\d+)?)\/eng@\2/g;
+// Matches every gazette link on the yearly index page, whether it's written
+// as a relative href ("/akn/za/officialGazette/...") or a full absolute URL
+// ("https://gazettes.africa/akn/za/officialGazette/..." ) — the page was
+// found to use relative hrefs, but this tolerates either. Captures the
+// gazette-series slug, the ISO date, and the gazette number (which may
+// carry a "-part-1" style suffix).
+const LINK_RE = /href=["'](?:https:\/\/gazettes\.africa)?(\/akn\/za\/officialGazette\/([a-z0-9-]+)\/(\d{4}-\d{2}-\d{2})\/([0-9]+(?:-part-\d+)?)\/eng@\3)["']/g;
 
 function normaliseNumber(raw) {
   // Gazette numbers sometimes arrive as "55238", "No. 55238", "GG55238",
@@ -45,32 +56,40 @@ function normaliseNumber(raw) {
   return digits || null;
 }
 
-async function fetchYearIndex(year) {
-  const url = 'https://gazettes.africa/gazettes/za/' + year;
+function sleep(ms) {
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
+async function fetchOnce(url) {
   const controller = new AbortController();
   const timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
-  let html;
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ArkKonsultGazetteHub/1.0; +https://gazette-hub.netlify.app)' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; ArkKonsultGazetteHub/1.0; +https://gazette-hub.netlify.app)',
+        'Accept': 'text/html',
+      },
     });
     if (!res.ok) throw new Error('gazettes.africa index HTTP ' + res.status);
-    html = await res.text();
+    return await res.text();
   } finally {
     clearTimeout(timer);
   }
+}
 
+function parseIndex(html) {
   const byNumber = {};
   let m;
   LINK_RE.lastIndex = 0;
   while ((m = LINK_RE.exec(html)) !== null) {
-    const series = m[1];
-    const date = m[2];
-    const numberRaw = m[3];
+    const path = m[1];
+    const series = m[2];
+    const date = m[3];
+    const numberRaw = m[4];
     const number = normaliseNumber(numberRaw.split('-part-')[0]);
     if (!number) continue;
-    const docUrl = 'https://gazettes.africa/akn/za/officialGazette/' + series + '/' + date + '/' + numberRaw + '/eng@' + date;
+    const docUrl = 'https://gazettes.africa' + path;
     // Prefer the main "government-gazette" series if the same number also
     // shows up in a sub-series (e.g. Legal Notices A/B/C).
     const existing = byNumber[number];
@@ -79,6 +98,29 @@ async function fetchYearIndex(year) {
     }
   }
   return byNumber;
+}
+
+// Fetches and parses the yearly index, retrying once on failure (including
+// a "successful" fetch that parsed zero entries, which almost always means
+// a bot-check page came back instead of the real page rather than the year
+// genuinely having no gazettes). Throws if both attempts fail — the caller
+// is responsible for falling back to a cached index rather than treating
+// that as "there are no gazettes this year."
+async function fetchYearIndex(year) {
+  const url = 'https://gazettes.africa/gazettes/za/' + year;
+  let lastErr = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await sleep(RETRY_DELAY_MS);
+    try {
+      const html = await fetchOnce(url);
+      const byNumber = parseIndex(html);
+      if (Object.keys(byNumber).length > 0) return byNumber;
+      lastErr = new Error('gazettes.africa index parsed 0 entries (likely a bot-check page, not the real index)');
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('Unknown error fetching gazette index for ' + year);
 }
 
 async function getYearIndex(year) {
@@ -104,7 +146,9 @@ async function getYearIndex(year) {
   } catch (e) {
     console.error('Gazette index fetch failed for ' + year + ':', e.message);
     // Serve a stale cached index rather than nothing, if we have one —
-    // better than losing every link on a transient network hiccup.
+    // gazettes.africa's bot-check makes this the normal path sometimes,
+    // not just a rare hiccup, so a stale-but-real index is far better
+    // than an empty one.
     return cached ? cached.byNumber : {};
   }
 }
