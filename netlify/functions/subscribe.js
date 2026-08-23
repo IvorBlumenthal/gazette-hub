@@ -11,6 +11,12 @@
 const { isValidEmail, addPending } = require('./lib/subscribers');
 const { sendEmail } = require('./lib/resend');
 const { SITE_URL } = require('./lib/site');
+const { checkRateLimit } = require('./lib/rateLimit');
+
+// Stops this from being used to email-bomb an address with confirmation
+// emails, or to spam the subscriber list.
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_SECONDS = 600; // 10 minutes
 
 exports.handler = async (event) => {
   const headers = {
@@ -21,6 +27,11 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+
+  const rate = await checkRateLimit(event, 'subscribe', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+  if (!rate.allowed) {
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many attempts — please wait a few minutes and try again.' }) };
+  }
 
   let body;
   try { body = JSON.parse(event.body || '{}'); }
