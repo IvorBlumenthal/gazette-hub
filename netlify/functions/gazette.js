@@ -4,6 +4,14 @@
 const { findById } = require('./lib/categories');
 const { callAI } = require('./lib/ai');
 const { getCached, setCached } = require('./lib/cache');
+const { checkRateLimit } = require('./lib/rateLimit');
+const { checkAndIncrementDailyBudget } = require('./lib/aiGuard');
+
+// Generous enough for normal browsing (loading several categories, running
+// a couple of searches) but caps a script or bot hammering this endpoint —
+// every cache miss here calls the paid Anthropic API.
+const RATE_LIMIT_MAX = 40;
+const RATE_LIMIT_WINDOW_SECONDS = 900; // 15 minutes
 
 exports.handler = async (event) => {
   const headers = {
@@ -13,6 +21,11 @@ exports.handler = async (event) => {
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+
+  const rate = await checkRateLimit(event, 'gazette', RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_SECONDS);
+  if (!rate.allowed) {
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too many requests — please wait a few minutes and try again.' }) };
+  }
 
   let reqBody;
   try { reqBody = JSON.parse(event.body || '{}'); }
@@ -32,6 +45,11 @@ exports.handler = async (event) => {
       + 'Return exactly 8 matching notices as a JSON array starting with [ and ending with ]. '
       + 'For each notice, include the real source URL you found it at if possible — the user needs to be able to click through and read the full official notice. '
       + 'Use your knowledge of SA gazette patterns to supplement if web search finds fewer than 8.';
+    const budget = await checkAndIncrementDailyBudget();
+    if (!budget.allowed) {
+      console.error('Gazette search: daily AI budget exceeded (' + budget.count + '/' + budget.limit + ')');
+      return { statusCode: 503, headers, body: JSON.stringify({ error: 'Search is temporarily unavailable — please try again later.' }) };
+    }
     try {
       const notices = await callAI(apiKey, prompt, true);
       return { statusCode: 200, headers, body: JSON.stringify({ notices: notices, cached: false }) };
@@ -69,6 +87,12 @@ exports.handler = async (event) => {
     + 'Use web search results for real notices, supplement with your knowledge to reach 8. '
     + 'For each notice, include the real source URL you found it at if possible — the user needs to be able to click through and read the full official notice. '
     + 'Set category field to "' + categoryId + '" for all entries.';
+
+  const budget = await checkAndIncrementDailyBudget();
+  if (!budget.allowed) {
+    console.error('Gazette category: daily AI budget exceeded (' + budget.count + '/' + budget.limit + ')');
+    return { statusCode: 503, headers, body: JSON.stringify({ error: 'This category is temporarily unavailable — please try again later.' }) };
+  }
 
   let notices = [];
   try {
