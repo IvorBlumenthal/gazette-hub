@@ -13,6 +13,12 @@
 //   MANUAL_TRIGGER_SECRET - if set, allows a manual GET run via
 //                            ?secret=... for testing without waiting for Monday
 //
+// Also runs on demand from the admin panel's "Refresh all categories now"
+// button (admin.html), authenticated the same way as the rest of the admin
+// panel — a POST with an x-admin-password header matching ADMIN_PASSWORD.
+// A POST with no such header is assumed to be Netlify's own scheduled cron
+// invocation and runs unauthenticated, same as before.
+//
 // Note: this previously cached to a Supabase project, which was found to
 // have been deleted (see commit history) — it now shares the same Netlify
 // Blobs cache that gazette.js reads from, so there's no separate external
@@ -63,6 +69,17 @@ exports.handler = async (event) => {
     }
   }
 
+  // Admin panel trigger: a POST carrying the same x-admin-password header
+  // used everywhere else in the admin UI. Netlify's own scheduled cron also
+  // invokes this via POST but never sends this header, so a plain POST with
+  // no header still runs unauthenticated exactly as it always has.
+  const suppliedAdminPw = event.headers && (event.headers['x-admin-password'] || event.headers['X-Admin-Password']);
+  if (event.httpMethod === 'POST' && suppliedAdminPw) {
+    if (!process.env.ADMIN_PASSWORD || suppliedAdminPw !== process.env.ADMIN_PASSWORD) {
+      return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid admin password' }) };
+    }
+  }
+
   const categories = (await loadAll()).filter(function (c) { return c.active !== false; });
   const results = [];
   console.log('Gazette scheduler started:', new Date().toISOString(), '—', categories.length, 'active categories');
@@ -85,5 +102,5 @@ exports.handler = async (event) => {
   }
 
   console.log('Scheduler complete:', results.length, 'combinations processed');
-  return { statusCode: 200, body: JSON.stringify({ processed: results.length, results: results }) };
+  return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ processed: results.length, results: results }) };
 };
