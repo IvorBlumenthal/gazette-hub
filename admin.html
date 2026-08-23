@@ -64,6 +64,10 @@ textarea{resize:vertical;min-height:56px;}
 .gate .card{text-align:left;}
 #app{display:none;}
 .empty{color:var(--text-soft);font-size:.85rem;padding:12px 0;}
+.vtable{width:100%;border-collapse:collapse;font-size:.82rem;}
+.vtable th{text-align:left;color:var(--text-soft);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.3px;padding:6px 10px;border-bottom:1px solid var(--border);}
+.vtable td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+.vtable tr:last-child td{border-bottom:none;}
 </style>
 </head>
 <body>
@@ -115,6 +119,24 @@ textarea{resize:vertical;min-height:56px;}
   </div>
 
   <div class="card">
+    <h2>Site visitors</h2>
+    <div class="hint" style="margin-bottom:10px">Everyone who has registered through the access gate on the site — company name, email, and cellphone number. This list is separate from newsletter subscribers below and is never emailed automatically.</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+      <button class="btn outline small" onclick="loadVisitors()" id="visitors-refresh-btn">&#8635; Refresh list</button>
+      <button class="btn outline small" onclick="downloadVisitorsCsv()" id="visitors-csv-btn">&#8681; Download as CSV</button>
+      <span class="hint" id="visitors-count"></span>
+    </div>
+    <div id="visitors-list"></div>
+  </div>
+
+  <div class="card">
+    <h2>Gazette data refresh</h2>
+    <div class="hint" style="margin-bottom:10px">Every category is refreshed automatically each Monday. Use this to refresh all of them right now instead of waiting — for example after adding a new category, or if some notices are missing their "View full notice" link because they were cached before that feature existed. This can take a few minutes; please keep this tab open until it finishes.</div>
+    <button class="btn outline small" onclick="refreshGazetteCache()" id="refresh-btn">&#8635; Refresh all categories now</button>
+    <div id="refresh-status" class="hint" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
     <h2>Monthly newsletter</h2>
     <div class="hint" style="margin-bottom:10px">A draft is generated automatically on the 1st of each month from that month's real gazette notices. Nothing is ever emailed or published without you clicking Publish below.</div>
     <div style="display:flex;gap:10px;margin-bottom:14px">
@@ -150,6 +172,7 @@ async function unlock() {
   document.getElementById('gate-msg').innerHTML = '';
   await loadCategories();
   await loadNewsletter();
+  await loadVisitors();
   document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 }
@@ -251,6 +274,70 @@ async function deleteCategory(id) {
   } catch (err) { banner(err.message, 'err'); }
 }
 
+let visitorsCache = [];
+
+async function loadVisitors() {
+  const listEl = document.getElementById('visitors-list');
+  const countEl = document.getElementById('visitors-count');
+  listEl.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const res = await fetch('/.netlify/functions/visitors-admin', { headers: { 'x-admin-password': getPw() } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    visitorsCache = data.visitors || [];
+    countEl.textContent = visitorsCache.length + ' registered';
+    if (visitorsCache.length === 0) {
+      listEl.innerHTML = '<div class="empty">No one has registered yet.</div>';
+      return;
+    }
+    listEl.innerHTML = `<table class="vtable"><thead><tr><th>Company</th><th>Email</th><th>Cellphone</th><th>Registered</th></tr></thead><tbody>${
+      visitorsCache.map(v => `<tr><td>${escHtml(v.company)}</td><td>${escHtml(v.email)}</td><td>${escHtml(v.phone)}</td><td>${new Date(v.registeredAt).toLocaleDateString()}</td></tr>`).join('')
+    }</tbody></table>`;
+  } catch (err) {
+    listEl.innerHTML = `<div class="msg err">Could not load visitors: ${escHtml(err.message)}</div>`;
+  }
+}
+
+function downloadVisitorsCsv() {
+  if (visitorsCache.length === 0) { banner('Nothing to download yet — click "Refresh list" first.', 'err'); return; }
+  const escCsv = s => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+  const rows = [['Company', 'Email', 'Cellphone', 'Registered', 'Last seen'].map(escCsv).join(',')]
+    .concat(visitorsCache.map(v => [v.company, v.email, v.phone, v.registeredAt, v.lastSeenAt].map(escCsv).join(',')));
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'gazette-hub-visitors-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function refreshGazetteCache() {
+  const btn = document.getElementById('refresh-btn');
+  const status = document.getElementById('refresh-status');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing… this can take a few minutes';
+  status.textContent = 'Re-fetching every active category from the gazette. Please don\'t close this tab.';
+  try {
+    const res = await fetch('/.netlify/functions/gazette-scheduler', { method: 'POST', headers: { 'x-admin-password': getPw() } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    const results = data.results || [];
+    const failed = results.filter(r => r.error).length;
+    const ok = results.length - failed;
+    banner(`Refresh complete: ${ok} of ${results.length} category/period combinations updated.` + (failed ? ` ${failed} failed — try again shortly.` : ''), failed ? 'err' : 'ok');
+    status.textContent = 'Last refreshed just now (' + new Date().toLocaleTimeString() + ').';
+  } catch (err) {
+    banner('Refresh failed: ' + err.message, 'err');
+    status.textContent = '';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#8635; Refresh all categories now';
+  }
+}
+
 async function nlApiCall(body) {
   const res = await fetch('/.netlify/functions/newsletter-admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-password': getPw() }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
@@ -329,6 +416,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (ok) {
       await loadCategories();
       await loadNewsletter();
+      await loadVisitors();
       document.getElementById('gate').style.display = 'none';
       document.getElementById('app').style.display = 'block';
     } else {
