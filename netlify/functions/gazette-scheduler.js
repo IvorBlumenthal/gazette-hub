@@ -25,7 +25,7 @@
 // account to keep alive.
 
 const { loadAll } = require('./lib/categories');
-const { callAI } = require('./lib/ai');
+const { callAI, SCHEDULED_MAX_SEARCH_USES, SCHEDULED_REQUEST_TIMEOUT_MS } = require('./lib/ai');
 const { setCached } = require('./lib/cache');
 
 // Matches the periods the site actually offers (see index.html's period
@@ -49,7 +49,11 @@ async function fetchNotices(category, months, apiKey) {
     + 'Use web search results for real notices, supplement with your knowledge to reach 8. '
     + 'For each notice, include the real source URL you found it at if possible — the user needs to be able to click through and read the full official notice. '
     + 'Set category field to "' + category.id + '" for all entries.';
-  return callAI(apiKey, prompt, true);
+  // This runs in a 900s background function with no user waiting on it, so
+  // it can afford a much deeper search-per-notice pass than the live,
+  // on-demand path in gazette.js can — see lib/ai.js for why the two
+  // differ.
+  return callAI(apiKey, prompt, true, { maxSearchUses: SCHEDULED_MAX_SEARCH_USES, requestTimeoutMs: SCHEDULED_REQUEST_TIMEOUT_MS });
 }
 
 exports.handler = async (event) => {
