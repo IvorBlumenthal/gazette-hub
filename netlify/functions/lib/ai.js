@@ -28,17 +28,24 @@ const RETRY_NOTE = '\n\nIMPORTANT: Your previous attempt did not return valid JS
 // Two different budgets are used depending on who's calling:
 //
 //   LIVE_REQUEST_TIMEOUT_MS is for gazette.js's on-demand search and
-//   category-cache-miss paths, which run inside a Netlify function capped at
-//   26 seconds total (see netlify.toml). The search-enabled attempt has to
-//   leave room for link verification afterwards (up to ~8s) plus parsing and
-//   response overhead, so it's kept well under that ceiling.
+//   category-cache-miss paths. This used to be tuned around a 26-second
+//   Netlify function limit declared in netlify.toml, but that turned out to
+//   be dead configuration — Netlify's real synchronous function limit is a
+//   fixed 60 seconds and isn't configurable, confirmed both by their docs
+//   and empirically (a live request measured at 36s completed fine, which a
+//   real 26s cap would have killed; earlier, a 20s search-attempt timeout
+//   was found to be routinely aborting before the model finished searching,
+//   which is why so many notices came back with no real link at all — see
+//   commit history). Kept a margin under the real 60s ceiling to leave room
+//   for link verification afterwards (up to ~8s) and a possible no-search
+//   fallback attempt.
 //
 //   SCHEDULED_REQUEST_TIMEOUT_MS is for the Monday full refresh and Friday
 //   alert, which run in 900-second background functions and loop over many
 //   categories sequentially — there's no per-request rush, so each call can
 //   spend longer letting the model search individually for each notice's
 //   real source document.
-const LIVE_REQUEST_TIMEOUT_MS = 20000;
+const LIVE_REQUEST_TIMEOUT_MS = 40000;
 const SCHEDULED_REQUEST_TIMEOUT_MS = 45000;
 
 // How many times the model may call the web_search tool within one request.
@@ -46,7 +53,7 @@ const SCHEDULED_REQUEST_TIMEOUT_MS = 45000;
 // documents than one shared search ever could, but each extra search adds
 // real latency — so the live path uses a smaller budget than the scheduled
 // jobs, which have no hard deadline pressing on them.
-const LIVE_MAX_SEARCH_USES = 4;
+const LIVE_MAX_SEARCH_USES = 6;
 const SCHEDULED_MAX_SEARCH_USES = 8;
 
 function extractJsonArray(text) {
@@ -210,9 +217,9 @@ module.exports = {
   extractJsonArray,
   extractJsonObject,
   MODEL,
-  // Exported so the scheduled jobs (which have a 900s budget, not a 26s
-  // one) can opt into a deeper search-per-notice pass — see the comment
-  // above these constants' definitions.
+  // Exported so the scheduled jobs (which have a 900s budget, not the live
+  // path's 60s one) can opt into a deeper search-per-notice pass — see the
+  // comment above these constants' definitions.
   SCHEDULED_MAX_SEARCH_USES,
   SCHEDULED_REQUEST_TIMEOUT_MS,
 };
