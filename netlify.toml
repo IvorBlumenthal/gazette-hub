@@ -5,8 +5,13 @@
 [functions]
   node_bundler = "esbuild"
 
-[functions."gazette"]
-  timeout = 26
+# "gazette" (the live, on-demand search/category function) intentionally has
+# no [functions."gazette"] timeout entry here. It used to declare timeout=26,
+# but that was dead configuration -- Netlify's synchronous function limit is
+# a fixed 60 seconds and isn't configurable via netlify.toml (confirmed via
+# their docs, and empirically: a live request measured at 36s completed
+# successfully, which a real 26s cap would have killed). lib/ai.js's
+# LIVE_REQUEST_TIMEOUT_MS is deliberately kept under the real 60s ceiling.
 
 [functions."gazette-scheduler"]
   timeout = 900
