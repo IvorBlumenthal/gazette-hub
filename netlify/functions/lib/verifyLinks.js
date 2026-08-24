@@ -27,10 +27,20 @@ const { getVerifiedUrl } = require('./gazetteIndex');
 const LIVE_CHECK_TIMEOUT_MS = 8000;
 
 // A URL that loads successfully isn't the same as a URL that points at the
-// actual notice — "https://www.gpwonline.co.za" (no path at all) loads
-// just fine and is completely useless as a "View full notice" link. This
-// rejects anything that's just a bare domain / homepage before it's even
-// worth spending a network request to check.
+// actual notice. A generic path-length check isn't enough to tell the two
+// apart — confirmed by a real example: gpwonline.co.za's own "Gazette
+// Enquiries" contact page has a long, date-shaped address
+// ("/2025/07/31/gazette-enquiries/") and loads perfectly fine (200 OK),
+// but it's a blog post, not a notice. So this only accepts a URL that is
+// unambiguously a specific document:
+//   - a direct PDF (or Word doc) file — every real source we've found
+//     (gov.za, SARS, provincial departments, labour.gov.za...) serves
+//     the actual notice as a PDF file, never as a generic webpage; or
+//   - gazettes.africa's own per-document viewer URL, which is
+//     structurally impossible to confuse with one of their listing or
+//     informational pages.
+// Anything else — including a plausible-looking page on the right
+// domain — is rejected before it's even worth a network request.
 function looksLikeSpecificDocument(url) {
   let parsed;
   try {
@@ -38,14 +48,10 @@ function looksLikeSpecificDocument(url) {
   } catch (e) {
     return false;
   }
-  const path = parsed.pathname.replace(/\/+$/, ''); // strip trailing slash(es)
-  if (path.length === 0) return false; // bare domain root
-  // A single short path segment (e.g. "/gazettes" or "/documents") reads
-  // as a generic section of a site, not a specific notice — require
-  // something with a bit more substance, which real document URLs
-  // (PDF filenames, deep AKN paths, numbered notice pages) always have.
-  if (path.length < 10) return false;
-  return true;
+  const path = parsed.pathname;
+  if (/\.(pdf|docx?|rtf)$/i.test(path)) return true;
+  if (parsed.hostname.replace(/^www\./, '') === 'gazettes.africa' && /^\/akn\/za\/officialGazette\//.test(path)) return true;
+  return false;
 }
 
 async function liveVerify(url) {
