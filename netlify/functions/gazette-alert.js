@@ -26,7 +26,7 @@
 //                            secret gazette-scheduler.js uses)
 
 const { loadAll } = require('./lib/categories');
-const { callAI } = require('./lib/ai');
+const { callAI, SCHEDULED_MAX_SEARCH_USES, SCHEDULED_REQUEST_TIMEOUT_MS } = require('./lib/ai');
 const { setCached } = require('./lib/cache');
 const { getSeen, markSeenAndDiff } = require('./lib/seen');
 const { sendEmail } = require('./lib/resend');
@@ -43,7 +43,10 @@ async function fetchNotices(category, apiKey) {
     + 'Use web search results for real notices, supplement with your knowledge to reach 8. '
     + 'For each notice, include the real source URL you found it at if possible — the user needs to be able to click through and read the full official notice. '
     + 'Set category field to "' + category.id + '" for all entries.';
-  return callAI(apiKey, prompt, true);
+  // Same reasoning as gazette-scheduler.js: this runs in a 900s background
+  // function, so it can afford a deeper search-per-notice pass than the
+  // live path can.
+  return callAI(apiKey, prompt, true, { maxSearchUses: SCHEDULED_MAX_SEARCH_USES, requestTimeoutMs: SCHEDULED_REQUEST_TIMEOUT_MS });
 }
 
 function buildEmail(report) {
@@ -115,23 +118,3 @@ exports.handler = async (event) => {
   let emailResult = null;
   if (report.length > 0) {
     const resendKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.NEWSLETTER_FROM_EMAIL;
-    const toEmail = process.env.ADMIN_ALERT_EMAIL;
-    if (!resendKey || !fromEmail || !toEmail) {
-      console.error('Gazette alert: found new notices but cannot email — missing RESEND_API_KEY, NEWSLETTER_FROM_EMAIL, or ADMIN_ALERT_EMAIL');
-    } else {
-      const totalNew = report.reduce(function (sum, r) { return sum + r.newNotices.length; }, 0);
-      const { html, text } = buildEmail(report);
-      try {
-        await sendEmail(resendKey, fromEmail, toEmail, 'New gazette notices this week (' + totalNew + ')', html, text);
-        emailResult = { sent: true, totalNew: totalNew };
-      } catch (e) {
-        console.error('Gazette alert: send failed:', e.message);
-        emailResult = { sent: false, error: e.message };
-      }
-    }
-  }
-
-  console.log('Gazette alert complete:', report.length, 'categories with new notices');
-  return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ categoriesWithNew: report.length, email: emailResult }) };
-};
