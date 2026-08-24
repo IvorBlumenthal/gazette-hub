@@ -80,9 +80,13 @@ function looksLikeSpecificDocument(url) {
   return /\.(pdf|docx?|rtf)$/i.test(parsed.pathname);
 }
 
+// Returns { ok, detail } rather than a plain boolean — detail is a short,
+// specific diagnostic string ('timeout', 'http-404', 'network-error: ...')
+// surfaced via notice.link_reject_reason so a live failure can be told
+// apart from a merely-wrong guess without needing server log access.
 async function liveVerify(url) {
-  if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return false;
-  if (!looksLikeSpecificDocument(url)) return false;
+  if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return { ok: false, detail: 'invalid-url' };
+  if (!looksLikeSpecificDocument(url)) return { ok: false, detail: 'not-a-document-url' };
   const controller = new AbortController();
   const timer = setTimeout(function () { controller.abort(); }, LIVE_CHECK_TIMEOUT_MS);
   try {
@@ -95,9 +99,9 @@ async function liveVerify(url) {
       signal: controller.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ArkKonsultGazetteHub/1.0; +https://gazette-hub.netlify.app)' },
     });
-    return res.ok;
+    return { ok: res.ok, detail: res.ok ? 'ok' : ('http-' + res.status) };
   } catch (e) {
-    return false;
+    return { ok: false, detail: (e.name === 'AbortError') ? 'timeout-after-' + (LIVE_CHECK_TIMEOUT_MS / 1000) + 's' : 'network-error: ' + e.message };
   } finally {
     clearTimeout(timer);
   }
@@ -106,42 +110,56 @@ async function liveVerify(url) {
 async function verifyOneNotice(notice) {
   if (!notice || typeof notice !== 'object') return;
   const guessed = notice.source_url;
+  notice.ai_guessed_url = guessed || null;
 
-  // reject_reason is a harmless diagnostic field (never read by the
+  // link_reject_reason is a harmless diagnostic field (never read by the
   // frontend) so we can tell, from the outside, exactly which check a
   // rejected guess failed — without it, "no link" always looks the same
   // whether the AI found nothing, found a non-PDF page, guessed a PDF for
-  // the wrong gazette, or guessed a PDF that's actually dead.
-  let rejectReason;
+  // the wrong gazette, or guessed a real PDF that just failed to fetch.
   if (!guessed) {
-    rejectReason = 'no-guess';
-  } else if (!looksLikeSpecificDocument(guessed)) {
-    rejectReason = 'not-a-document-url';
-  } else if (!urlContainsGazetteNumber(guessed, notice.gazette_no)) {
-    rejectReason = 'gazette-number-not-in-url';
-  } else {
-    rejectReason = 'fetch-failed-or-errored';
+    notice.source_url = null;
+    notice.link_verified = false;
+    notice.link_source = null;
+    notice.link_reject_reason = 'no-guess';
+    return;
+  }
+  if (!looksLikeSpecificDocument(guessed)) {
+    notice.source_url = null;
+    notice.link_verified = false;
+    notice.link_source = null;
+    notice.link_reject_reason = 'not-a-document-url';
+    return;
+  }
+  if (!urlContainsGazetteNumber(guessed, notice.gazette_no)) {
+    notice.source_url = null;
+    notice.link_verified = false;
+    notice.link_source = null;
+    notice.link_reject_reason = 'gazette-number-not-in-url';
+    return;
   }
 
   try {
-    if (guessed && urlContainsGazetteNumber(guessed, notice.gazette_no) && (await liveVerify(guessed))) {
+    const result = await liveVerify(guessed);
+    if (result.ok) {
       notice.source_url = guessed;
       notice.link_verified = true;
       notice.link_source = 'ai-guess-live-verified';
       notice.link_reject_reason = null;
-      notice.ai_guessed_url = guessed;
       return;
     }
+    // No fallback: a real but unreachable guess is worse than no link.
+    notice.source_url = null;
+    notice.link_verified = false;
+    notice.link_source = null;
+    notice.link_reject_reason = result.detail;
   } catch (e) {
     console.error('Live link verification errored for ' + guessed + ':', e.message);
+    notice.source_url = null;
+    notice.link_verified = false;
+    notice.link_source = null;
+    notice.link_reject_reason = 'threw: ' + e.message;
   }
-
-  // No fallback: a mismatched or unreachable guess is worse than no link.
-  notice.source_url = null;
-  notice.link_verified = false;
-  notice.link_source = null;
-  notice.link_reject_reason = rejectReason;
-  notice.ai_guessed_url = guessed || null;
 }
 
 async function verifyNoticeLinks(notices) {
