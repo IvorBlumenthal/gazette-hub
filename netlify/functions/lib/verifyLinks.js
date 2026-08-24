@@ -107,11 +107,29 @@ async function verifyOneNotice(notice) {
   if (!notice || typeof notice !== 'object') return;
   const guessed = notice.source_url;
 
+  // reject_reason is a harmless diagnostic field (never read by the
+  // frontend) so we can tell, from the outside, exactly which check a
+  // rejected guess failed — without it, "no link" always looks the same
+  // whether the AI found nothing, found a non-PDF page, guessed a PDF for
+  // the wrong gazette, or guessed a PDF that's actually dead.
+  let rejectReason;
+  if (!guessed) {
+    rejectReason = 'no-guess';
+  } else if (!looksLikeSpecificDocument(guessed)) {
+    rejectReason = 'not-a-document-url';
+  } else if (!urlContainsGazetteNumber(guessed, notice.gazette_no)) {
+    rejectReason = 'gazette-number-not-in-url';
+  } else {
+    rejectReason = 'fetch-failed-or-errored';
+  }
+
   try {
     if (guessed && urlContainsGazetteNumber(guessed, notice.gazette_no) && (await liveVerify(guessed))) {
       notice.source_url = guessed;
       notice.link_verified = true;
       notice.link_source = 'ai-guess-live-verified';
+      notice.link_reject_reason = null;
+      notice.ai_guessed_url = guessed;
       return;
     }
   } catch (e) {
@@ -122,6 +140,8 @@ async function verifyOneNotice(notice) {
   notice.source_url = null;
   notice.link_verified = false;
   notice.link_source = null;
+  notice.link_reject_reason = rejectReason;
+  notice.ai_guessed_url = guessed || null;
 }
 
 async function verifyNoticeLinks(notices) {
