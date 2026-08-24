@@ -10,7 +10,8 @@ const MODEL = 'claude-haiku-4-5-20251001';
 
 const JSON_SYSTEM = 'You are a South African government gazette expert. Output ONLY a raw JSON array. Start with [ and end with ]. '
   + 'Each object: {"title":"string","gazette_no":"string - digits only, the actual government gazette number, e.g. \\"55238\\" — this is used to look up and verify the real document, so accuracy here matters more than any other field","date":"YYYY-MM-DD","summary":"2-3 sentences","practitioner_note":"1 sentence for employers","category":"string","source_url":"string"}. '
-  + 'For "source_url", give your best guess of a source if you have one — but note this field is only a hint: the application independently verifies every notice against the real gazette number before showing any link, so never fabricate a convincing-looking URL, and never worry if you cannot find one. '
+  + 'You have multiple web searches available — use a separate search for each notice to find its own real source document (a direct .pdf/.doc file on gov.za, SARS, a provincial department, labour.gov.za, etc.), rather than one broad search for the whole topic. '
+  + 'For "source_url", give the real, direct document URL you found for that specific notice if you found one — but note this field is only a hint: the application independently verifies every notice against the real gazette number before showing any link, so never fabricate a convincing-looking URL, a homepage, or a category/listing page, and never worry if you genuinely cannot find one — leave source_url as an empty string rather than guessing. '
   + 'No text before or after the array. This rule applies no matter what: even if your search finds few or no results, you must still return a JSON array of '
   + '8 objects using your general knowledge of real or representative SA gazette notices for the topic and period — never explain that results were limited, '
   + 'never write a sentence like "Based on the search results", never apologise, never add markdown code fences. Your entire reply must be parseable JSON, nothing else.';
@@ -23,7 +24,30 @@ const RETRY_NOTE = '\n\nIMPORTANT: Your previous attempt did not return valid JS
 // silently eat the scheduler's entire 15-minute budget and leave most
 // categories without a fresh cache for the week — worse than one category
 // failing on its own.
-const REQUEST_TIMEOUT_MS = 45000;
+//
+// Two different budgets are used depending on who's calling:
+//
+//   LIVE_REQUEST_TIMEOUT_MS is for gazette.js's on-demand search and
+//   category-cache-miss paths, which run inside a Netlify function capped at
+//   26 seconds total (see netlify.toml). The search-enabled attempt has to
+//   leave room for link verification afterwards (up to ~8s) plus parsing and
+//   response overhead, so it's kept well under that ceiling.
+//
+//   SCHEDULED_REQUEST_TIMEOUT_MS is for the Monday full refresh and Friday
+//   alert, which run in 900-second background functions and loop over many
+//   categories sequentially — there's no per-request rush, so each call can
+//   spend longer letting the model search individually for each notice's
+//   real source document.
+const LIVE_REQUEST_TIMEOUT_MS = 20000;
+const SCHEDULED_REQUEST_TIMEOUT_MS = 45000;
+
+// How many times the model may call the web_search tool within one request.
+// Searching once per notice (up to 8) finds far more real, linkable
+// documents than one shared search ever could, but each extra search adds
+// real latency — so the live path uses a smaller budget than the scheduled
+// jobs, which have no hard deadline pressing on them.
+const LIVE_MAX_SEARCH_USES = 4;
+const SCHEDULED_MAX_SEARCH_USES = 8;
 
 function extractJsonArray(text) {
   const si = text.indexOf('[');
@@ -57,17 +81,17 @@ function extractJsonObject(text) {
   }
 }
 
-async function callAIOnce(apiKey, systemPrompt, userPrompt, useSearch, maxTokens) {
+async function callAIOnce(apiKey, systemPrompt, userPrompt, useSearch, maxTokens, maxSearchUses, timeoutMs) {
   const body = {
     model: MODEL,
     max_tokens: maxTokens,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   };
-  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 1 }];
+  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxSearchUses }];
 
   const controller = new AbortController();
-  const timer = setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(function () { controller.abort(); }, timeoutMs);
 
   let res;
   try {
@@ -78,7 +102,7 @@ async function callAIOnce(apiKey, systemPrompt, userPrompt, useSearch, maxTokens
       signal: controller.signal,
     });
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error('Anthropic request timed out after ' + (REQUEST_TIMEOUT_MS / 1000) + 's');
+    if (e.name === 'AbortError') throw new Error('Anthropic request timed out after ' + (timeoutMs / 1000) + 's');
     throw e;
   } finally {
     clearTimeout(timer);
@@ -96,17 +120,29 @@ async function callAIOnce(apiKey, systemPrompt, userPrompt, useSearch, maxTokens
 //      (relies on the model's own knowledge, which tends to comply with the
 //      strict JSON format far more reliably than a search-augmented reply
 //      does when live results are thin).
-async function callAI(apiKey, userPrompt, useSearch) {
+//
+// opts lets a caller with more time to spare (the scheduled jobs) ask for a
+// deeper search budget than the live, on-demand path can safely afford —
+// see the *_MAX_SEARCH_USES / *_REQUEST_TIMEOUT_MS comment above. Defaults
+// to the live-safe values, since gazette.js's on-demand paths are the ones
+// where getting this wrong causes a real user-facing timeout.
+async function callAI(apiKey, userPrompt, useSearch, opts) {
+  const maxSearchUses = (opts && opts.maxSearchUses) || LIVE_MAX_SEARCH_USES;
+  const searchTimeoutMs = (opts && opts.requestTimeoutMs) || LIVE_REQUEST_TIMEOUT_MS;
+  // The no-search fallback attempt needs no search budget, so it's always
+  // fast — a fixed, short timeout regardless of what the caller asked for.
+  const fallbackTimeoutMs = 10000;
+
   const attempts = [
-    { prompt: userPrompt, search: useSearch, maxTokens: 3000 },
-    { prompt: userPrompt + RETRY_NOTE, search: false, maxTokens: 3000 },
+    { prompt: userPrompt, search: useSearch, maxTokens: 3000, maxSearchUses: maxSearchUses, timeoutMs: searchTimeoutMs },
+    { prompt: userPrompt + RETRY_NOTE, search: false, maxTokens: 3000, maxSearchUses: 1, timeoutMs: fallbackTimeoutMs },
   ];
 
   let lastErr = null;
   for (let i = 0; i < attempts.length; i++) {
     const attempt = attempts[i];
     try {
-      const text = await callAIOnce(apiKey, JSON_SYSTEM, attempt.prompt, attempt.search, attempt.maxTokens);
+      const text = await callAIOnce(apiKey, JSON_SYSTEM, attempt.prompt, attempt.search, attempt.maxTokens, attempt.maxSearchUses, attempt.timeoutMs);
       const parsed = extractJsonArray(text);
       // Before handing notices back to any caller, replace the AI's guessed
       // source_url with a REAL link verified against gazettes.africa's own
@@ -144,16 +180,20 @@ const NEWSLETTER_RETRY_NOTE = '\n\nIMPORTANT: Your previous attempt did not retu
 // needed here, so this is faster and cheaper than callAI, and can't
 // hallucinate notices that don't exist.
 async function callAINewsletter(apiKey, userPrompt) {
+  // No search involved here, so maxSearchUses is irrelevant (only passed
+  // for a stable call signature) — but timeoutMs is not optional, since
+  // callAIOnce feeds it straight into setTimeout; leaving it undefined
+  // would abort the request almost immediately.
   const attempts = [
-    { prompt: userPrompt, maxTokens: 2000 },
-    { prompt: userPrompt + NEWSLETTER_RETRY_NOTE, maxTokens: 2000 },
+    { prompt: userPrompt, maxTokens: 2000, timeoutMs: 15000 },
+    { prompt: userPrompt + NEWSLETTER_RETRY_NOTE, maxTokens: 2000, timeoutMs: 15000 },
   ];
 
   let lastErr = null;
   for (let i = 0; i < attempts.length; i++) {
     const attempt = attempts[i];
     try {
-      const text = await callAIOnce(apiKey, NEWSLETTER_SYSTEM, attempt.prompt, false, attempt.maxTokens);
+      const text = await callAIOnce(apiKey, NEWSLETTER_SYSTEM, attempt.prompt, false, attempt.maxTokens, 1, attempt.timeoutMs);
       const parsed = extractJsonObject(text);
       if (parsed) return parsed;
       lastErr = new Error('No JSON object found. Got: ' + text.slice(0, 150));
@@ -164,4 +204,15 @@ async function callAINewsletter(apiKey, userPrompt) {
   throw lastErr || new Error('Unknown error generating newsletter text');
 }
 
-module.exports = { callAI, callAINewsletter, extractJsonArray, extractJsonObject, MODEL };
+module.exports = {
+  callAI,
+  callAINewsletter,
+  extractJsonArray,
+  extractJsonObject,
+  MODEL,
+  // Exported so the scheduled jobs (which have a 900s budget, not a 26s
+  // one) can opt into a deeper search-per-notice pass — see the comment
+  // above these constants' definitions.
+  SCHEDULED_MAX_SEARCH_USES,
+  SCHEDULED_REQUEST_TIMEOUT_MS,
+};
