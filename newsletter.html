@@ -40,12 +40,21 @@ header{background:var(--navy);color:#fff;padding:0 32px;}
 .notice-list li:first-child{border-top:none;}
 .notice-list a{color:var(--navy-light);font-weight:600;}
 .notice-list a:hover{color:var(--gold);text-decoration:underline;}
+.notice-list a.search-link{color:var(--text-soft);font-weight:400;}
+.notice-list a.search-link:hover{color:var(--text-mid);}
 .empty{color:var(--text-soft);font-size:.88rem;text-align:center;padding:20px 0;}
 .sub-row{display:flex;gap:10px;margin-top:8px;}
 #sub-email{flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:.9rem;outline:none;}
 #sub-email:focus{border-color:var(--gold);}
 #sub-btn{background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:10px 22px;font-size:.88rem;font-weight:600;cursor:pointer;white-space:nowrap;}
 #sub-btn:hover{background:var(--navy-mid);}
+.cat-prefs{margin-top:16px;}
+.cat-prefs-label{font-size:.8rem;font-weight:600;color:var(--text-mid);margin-bottom:8px;}
+.cat-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 14px;}
+.cat-check{display:flex;align-items:center;gap:7px;font-size:.83rem;color:var(--text);cursor:pointer;}
+.cat-check input{accent-color:var(--navy);width:15px;height:15px;flex-shrink:0;}
+.manage-btn{background:var(--navy);color:#fff;border:none;border-radius:var(--radius);padding:10px 22px;font-size:.88rem;font-weight:600;cursor:pointer;margin-top:14px;}
+.manage-btn:hover{background:var(--navy-mid);}
 .archive-item{padding:10px 0;border-top:1px solid var(--border);font-size:.85rem;}
 .archive-item:first-child{border-top:none;}
 .archive-item a{color:var(--navy);font-weight:600;}
@@ -97,13 +106,26 @@ footer a{color:var(--gold);}
 <div class="main">
   <div id="banner"></div>
 
-  <div class="card">
+  <div class="card" id="subscribe-card">
     <h2 style="font-size:1rem;color:var(--navy);margin-bottom:8px">Subscribe</h2>
     <div style="font-size:.85rem;color:var(--text-mid)">Get the monthly digest by email — one message a month, unsubscribe anytime.</div>
     <div class="sub-row">
       <input id="sub-email" type="email" placeholder="you@example.com" />
       <button id="sub-btn" onclick="subscribe()">Subscribe</button>
     </div>
+    <div class="cat-prefs">
+      <div class="cat-prefs-label">Which topics do you want in your digest? (all selected by default)</div>
+      <div class="cat-checklist" id="sub-cat-list"><div class="empty">Loading topics…</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="manage-card" style="display:none">
+    <h2 style="font-size:1rem;color:var(--navy);margin-bottom:8px">Manage your topics</h2>
+    <div style="font-size:.85rem;color:var(--text-mid)" id="manage-email"></div>
+    <div class="cat-prefs">
+      <div class="cat-checklist" id="manage-cat-list"><div class="empty">Loading…</div></div>
+    </div>
+    <button class="manage-btn" id="manage-save-btn" onclick="saveManagePrefs()">Save preferences</button>
   </div>
 
   <div class="card" id="latest-card">
@@ -126,13 +148,52 @@ footer a{color:var(--gold);}
 <script>
 function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ── Category preferences ─────────────────────────────────────
+// An empty/omitted category list always means "every category" (see
+// lib/subscribers.js), so both the subscribe form and the manage-topics
+// form default to every box checked.
+let allCategories = [];
+
+async function loadCategoriesForPrefs() {
+  try {
+    const res = await fetch('/.netlify/functions/categories');
+    const data = await res.json();
+    allCategories = Array.isArray(data.categories) ? data.categories : [];
+  } catch (err) {
+    allCategories = [];
+  }
+  return allCategories;
+}
+
+function renderCategoryChecklist(containerId, selected) {
+  const el = document.getElementById(containerId);
+  if (allCategories.length === 0) { el.innerHTML = '<div class="empty">Could not load topics — you\'ll get every category by default.</div>'; return; }
+  const allSelected = !selected || selected.length === 0;
+  el.innerHTML = allCategories.map(c => `
+    <label class="cat-check"><input type="checkbox" value="${escHtml(c.id)}" ${(allSelected || selected.indexOf(c.id) !== -1) ? 'checked' : ''}/> ${escHtml(c.icon || '')} ${escHtml(c.label)}</label>`).join('');
+}
+
+function getCheckedCategories(containerId) {
+  return Array.from(document.querySelectorAll('#' + containerId + ' input[type=checkbox]:checked')).map(el => el.value);
+}
+
+// Same reasoning and construction as index.html's gazetteSearchUrl and
+// netlify/functions/lib/searchLink.js — a plain, scoped search query the
+// reader runs themselves, offered for every notice so they can always
+// double-check a summary against the real gazette, not just when our own
+// link verification failed to find a direct document.
+function gazetteSearchUrl(n) {
+  const terms = [n.gazette_no || '', 'government gazette', n.title || '', 'site:gov.za OR site:gpwonline.co.za']
+    .filter(t => t).join(' ');
+  return 'https://www.google.com/search?q=' + encodeURIComponent(terms);
+}
 function renderIssue(issue) {
   if (!issue) return '<div class="empty">No newsletter has been published yet — check back soon.</div>';
   const sections = (issue.sections || []).map(s => `
     <div class="section-heading">${escHtml(s.categoryLabel)}</div>
     <div class="section-synthesis">${escHtml(s.synthesis)}</div>
     <ul class="notice-list">${(s.notices || []).map(n => `
-      <li>${escHtml(n.title)}${n.date ? ' — ' + escHtml(n.date) : ''}${n.source_url ? ` — <a href="${escHtml(n.source_url)}" target="_blank" rel="noopener">view notice ↗</a>` : ''}</li>`).join('')}
+      <li>${escHtml(n.title)}${n.date ? ' — ' + escHtml(n.date) : ''}${n.source_url ? ` — <a href="${escHtml(n.source_url)}" target="_blank" rel="noopener">view notice ↗</a>` : ''} — <a class="search-link" href="${escHtml(gazetteSearchUrl(n))}" target="_blank" rel="noopener">${n.source_url ? 'search to double-check' : 'search for it'}</a></li>`).join('')}
     </ul>`).join('');
   return `
     <div class="issue-title">${escHtml(issue.title)}</div>
@@ -168,93 +229,4 @@ async function loadSpecificMonth(month) {
     const data = await res.json();
     document.getElementById('latest-card').innerHTML = renderIssue(data.issue);
   } catch (err) {
-    document.getElementById('latest-card').innerHTML = '<div class="msg err">Could not find that issue.</div>';
-  }
-}
-
-async function subscribe() {
-  const email = document.getElementById('sub-email').value.trim();
-  const btn = document.getElementById('sub-btn');
-  if (!email) return;
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-  try {
-    const res = await fetch('/.netlify/functions/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
-    document.getElementById('banner').innerHTML = data.alreadyConfirmed
-      ? '<div class="msg ok">You\'re already subscribed.</div>'
-      : '<div class="msg ok">Almost there — check your email and click the confirmation link.</div>';
-    document.getElementById('sub-email').value = '';
-  } catch (err) {
-    document.getElementById('banner').innerHTML = `<div class="msg err">${escHtml(err.message)}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Subscribe';
-  }
-}
-
-function initSite() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('confirmed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">Subscription confirmed — you\'re on the list.</div>';
-  else if (params.get('confirmed') === '0') document.getElementById('banner').innerHTML = '<div class="msg err">That confirmation link is invalid or has expired.</div>';
-  else if (params.get('unsubscribed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">You\'ve been unsubscribed.</div>';
-
-  const month = params.get('month');
-  if (month) loadSpecificMonth(month);
-  else loadLatest();
-
-  document.getElementById('sub-email').addEventListener('keydown', e => { if (e.key === 'Enter') subscribe(); });
-}
-
-// ── Access gate ──────────────────────────────────────────────
-// Visitors must register (company, email, cellphone) once per browser
-// before the site content becomes visible. See register-visitor.js. Shares
-// the same localStorage key as index.html, so registering on either page
-// covers both.
-const GATE_KEY = 'gazette_registered';
-
-function showSite() {
-  document.getElementById('access-gate').style.display = 'none';
-  document.getElementById('site-content').style.display = 'block';
-  initSite();
-}
-
-async function submitGate() {
-  const company = document.getElementById('gate-company').value.trim();
-  const email = document.getElementById('gate-email').value.trim();
-  const phone = document.getElementById('gate-phone').value.trim();
-  const errEl = document.getElementById('gate-err');
-  errEl.innerHTML = '';
-  if (!company || !email || !phone) {
-    errEl.innerHTML = '<div class="gate-err">Please fill in all three fields.</div>';
-    return;
-  }
-  const btn = document.getElementById('gate-btn');
-  btn.disabled = true;
-  btn.textContent = 'Please wait…';
-  try {
-    const res = await fetch('/.netlify/functions/register-visitor', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, phone, company, page: location.pathname }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
-    localStorage.setItem(GATE_KEY, '1');
-    showSite();
-  } catch (err) {
-    errEl.innerHTML = `<div class="gate-err">${escHtml(err.message)}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Continue to site';
-  }
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-  if (localStorage.getItem(GATE_KEY) === '1') { showSite(); return; }
-  document.getElementById('gate-phone').addEventListener('keydown', e => { if (e.key === 'Enter') submitGate(); });
-});
-</script>
-</body>
-</html>
+    document.getElementById('latest-card').innerHTML = '<div class="msg err">Could
