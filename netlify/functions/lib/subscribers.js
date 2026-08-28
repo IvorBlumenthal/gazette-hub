@@ -38,10 +38,25 @@ function newToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+// A subscriber's "categories" field controls which sections of the monthly
+// digest they actually receive:
+//   - [] (empty array) or missing entirely -> "all categories". This is the
+//     default for anyone who signed up before this preference existed, and
+//     it deliberately also picks up any category added later, rather than
+//     silently leaving long-time subscribers on a frozen list.
+//   - a non-empty array of category ids -> only those categories' sections
+//     are included when a digest is sent to them (see
+//     lib/newsletterEmail.js's pickSectionsForSubscriber).
+function normaliseCategories(categories) {
+  return Array.isArray(categories) ? categories.filter(function (c) { return typeof c === 'string' && c; }) : [];
+}
+
 // Adds a new pending subscriber, or re-issues a fresh token for an existing
 // pending one (e.g. they lost the email). Confirmed subscribers who sign up
-// again are left alone — returns their existing record unchanged.
-async function addPending(email) {
+// again are left alone — returns their existing record unchanged (their
+// category preferences, if any, are managed separately via
+// updateCategoriesByToken, not by re-submitting the signup form).
+async function addPending(email, categories) {
   const normalised = email.trim().toLowerCase();
   const list = await loadAll();
   const existing = list.find(function (s) { return s.email === normalised; });
@@ -50,13 +65,15 @@ async function addPending(email) {
 
   const token = newToken();
   const now = new Date().toISOString();
+  const cats = normaliseCategories(categories);
 
   if (existing) {
     existing.status = 'pending';
     existing.token = token;
     existing.subscribedAt = now;
+    existing.categories = cats;
   } else {
-    list.push({ email: normalised, status: 'pending', token: token, subscribedAt: now, confirmedAt: null, unsubscribedAt: null });
+    list.push({ email: normalised, status: 'pending', token: token, categories: cats, subscribedAt: now, confirmedAt: null, unsubscribedAt: null });
   }
   await saveAll(list);
   return list.find(function (s) { return s.email === normalised; });
@@ -82,9 +99,30 @@ async function unsubscribeByToken(token) {
   return sub;
 }
 
+async function findByToken(token) {
+  const list = await loadAll();
+  return list.find(function (s) { return s.token === token; }) || null;
+}
+
+// Lets a subscriber change which categories they receive, at any time,
+// without having to unsubscribe and re-confirm — reached via the "Manage
+// your topics" link included in every digest email and the confirmation
+// email (see newsletter.html's ?manage= handling).
+async function updateCategoriesByToken(token, categories) {
+  const list = await loadAll();
+  const sub = list.find(function (s) { return s.token === token; });
+  if (!sub) return null;
+  sub.categories = normaliseCategories(categories);
+  await saveAll(list);
+  return sub;
+}
+
 async function confirmedList() {
   const list = await loadAll();
   return list.filter(function (s) { return s.status === 'confirmed'; });
 }
 
-module.exports = { loadAll, saveAll, isValidEmail, addPending, confirmByToken, unsubscribeByToken, confirmedList };
+module.exports = {
+  loadAll, saveAll, isValidEmail, addPending, confirmByToken, unsubscribeByToken,
+  confirmedList, findByToken, updateCategoriesByToken,
+};
