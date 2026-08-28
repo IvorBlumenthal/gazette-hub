@@ -13,28 +13,47 @@
 # successfully, which a real 26s cap would have killed). lib/ai.js's
 # LIVE_REQUEST_TIMEOUT_MS is deliberately kept under the real 60s ceiling.
 
-[functions."gazette-scheduler"]
-  timeout = 900
-
 [functions."newsletter-generator"]
   timeout = 900
 
 [functions."newsletter-admin"]
   timeout = 60
 
-[functions."gazette-alert"]
-  timeout = 900
+# "gazette-scheduler" and "gazette-alert" intentionally have no timeout
+# entries here, same reasoning as "gazette" above -- these used to declare
+# timeout=900, on the mistaken assumption they'd run as 900-second
+# background functions. They don't: they're regular scheduled functions, so
+# a cron-triggered tick is killed at a fixed 30 seconds and a manual POST
+# (e.g. the admin panel's "Refresh all categories now" button) at 60 --
+# confirmed via docs.netlify.com/build/functions/scheduled-functions/ and,
+# separately, by a real function-log entry showing a tick killed at
+# Duration: 60000 ms after completing only 1 of 24 category/period
+# combinations. Neither function tries to finish its full sweep in one
+# invocation any more -- see lib/sweepProgress.js -- so this dead
+# configuration was removed rather than "corrected" to a number that was
+# never going to be honoured either way.
 
-# Runs every Monday at 04:00 UTC = 06:00 SAST
+# Runs every 5 minutes across a 5-hour window starting 04:00 UTC (06:00
+# SAST) every Monday -- not a single tick. gazette-scheduler.js has to sweep
+# 8 categories x 3 periods = 24 combinations, and neither one AI call nor 24
+# of them back to back reliably fits inside a single cron-triggered
+# invocation's real 30-second limit. Spreading the sweep across up to 60
+# ticks (far more than the 24 combinations it needs) means the odd failed or
+# slow tick doesn't stop the week's refresh from completing -- see
+# lib/sweepProgress.js for how progress is saved and resumed between ticks.
 [[scheduled-functions]]
   name = "gazette-scheduler"
-  cron = "0 4 * * 1"
+  cron = "*/5 4-8 * * 1"
 
-# Runs every Friday at 04:00 UTC = 06:00 SAST — flags new notices since last
-# week's scan and emails a summary (only if something's actually new).
+# Same resumable-sweep pattern as gazette-scheduler above, across a 3-hour
+# window every Friday morning -- gazette-alert.js only has to scan one
+# period (1 month) per category, so needs fewer ticks to finish, but the
+# underlying problem (and fix) is identical. Flags new notices since last
+# week's scan and emails a summary once the whole week's sweep is done, only
+# if something's actually new.
 [[scheduled-functions]]
   name = "gazette-alert"
-  cron = "0 4 * * 5"
+  cron = "*/5 4-6 * * 5"
 
 # Runs on the 1st of every month at 05:00 UTC = 07:00 SAST
 [[scheduled-functions]]
