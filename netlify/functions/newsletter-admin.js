@@ -16,7 +16,7 @@ const { getDraft, getIndex, publish } = require('./lib/newsletters');
 const { buildAndSaveDraft } = require('./lib/newsletterBuilder');
 const { confirmedList } = require('./lib/subscribers');
 const { sendBatch } = require('./lib/resend');
-const { renderEmailHtml } = require('./lib/newsletterEmail');
+const { renderEmailHtml, pickSectionsForSubscriber } = require('./lib/newsletterEmail');
 const { SITE_URL } = require('./lib/site');
 
 function checkAuth(event) {
@@ -82,24 +82,43 @@ exports.handler = async (event) => {
       console.error('Newsletter publish: could not load subscribers:', e.message);
     }
 
+    // Each subscriber only gets the sections matching their own category
+    // preferences (see lib/newsletterEmail.js's pickSectionsForSubscriber) —
+    // an empty/missing preference list means "everything", so long-time
+    // subscribers who never set a preference keep getting the full digest
+    // exactly as before. A subscriber whose chosen topics had nothing new
+    // this month is skipped entirely rather than sent an empty email.
+    let skippedNoMatch = 0;
     let emailResult = { sent: 0, failed: 0, errors: [] };
     if (subscribers.length > 0) {
       const emails = subscribers.map(function (sub) {
+        const sections = pickSectionsForSubscriber(published, sub.categories);
+        if (sections.length === 0) { skippedNoMatch += 1; return null; }
+        const personalised = Object.assign({}, published, { sections: sections });
         const unsubscribeUrl = SITE_URL + '/.netlify/functions/unsubscribe?token=' + encodeURIComponent(sub.token);
+        const manageUrl = SITE_URL + '/newsletter.html?manage=' + encodeURIComponent(sub.token);
         return {
           from: fromEmail,
           to: [sub.email],
           subject: published.subject,
-          html: renderEmailHtml(published, unsubscribeUrl),
+          html: renderEmailHtml(personalised, unsubscribeUrl, manageUrl),
         };
-      });
-      emailResult = await sendBatch(resendKey, emails);
+      }).filter(Boolean);
+      if (emails.length > 0) emailResult = await sendBatch(resendKey, emails);
     }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ published: true, month: published.month, subscriberCount: subscribers.length, emailsSent: emailResult.sent, emailsFailed: emailResult.failed, emailErrors: emailResult.errors }),
+      body: JSON.stringify({
+        published: true,
+        month: published.month,
+        subscriberCount: subscribers.length,
+        emailsSent: emailResult.sent,
+        emailsFailed: emailResult.failed,
+        emailErrors: emailResult.errors,
+        skippedNoMatchingTopics: skippedNoMatch,
+      }),
     };
   }
 
