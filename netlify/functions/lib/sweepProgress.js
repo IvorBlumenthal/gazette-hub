@@ -24,4 +24,61 @@
 // the next cron tick a few minutes later or a second click of the admin
 // button. See netlify.toml for the cron windows this relies on.
 
-const {
+const { getBlobStore } = require('./blobStore');
+
+function store(storeName) {
+  return getBlobStore(storeName);
+}
+
+// A Monday-anchored ISO week id (e.g. "2026-W35"), used as the sweep's run
+// id. This is what makes a new week automatically start a fresh sweep
+// instead of "resuming" a run left over from a previous week — no separate
+// cleanup job needed.
+function isoWeekId(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = (d.getUTCDay() + 6) % 7; // Monday = 0 ... Sunday = 6
+  d.setUTCDate(d.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round(((d - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+  return d.getUTCFullYear() + '-W' + String(week).padStart(2, '0');
+}
+
+// Loads this week's progress record, or starts a fresh one if none exists
+// yet or the stored one belongs to a different (older) run id.
+async function loadProgress(storeName, key, runId) {
+  let data = null;
+  try {
+    data = await store(storeName).get(key, { type: 'json' });
+  } catch (e) {
+    console.error('Sweep progress read (' + storeName + '):', e.message);
+  }
+  if (data && data.runId === runId) return data;
+  return { runId: runId, doneKeys: [], startedAt: new Date().toISOString(), completedAt: null };
+}
+
+async function saveProgress(storeName, key, progress) {
+  try {
+    await store(storeName).setJSON(key, progress);
+  } catch (e) {
+    console.error('Sweep progress write (' + storeName + '):', e.message);
+  }
+}
+
+// How long a single invocation is allowed to keep working before it must
+// stop and save, leaving the rest for a future invocation. Kept well under
+// the real 30s/60s hard caps so there's room left for the surrounding
+// handler code (loading data, writing the final progress record) to run
+// after the loop exits on its own rather than being killed mid-write.
+function timeBudgetMs(isManual) {
+  return isManual ? 50000 : 24000;
+}
+
+// Marks a key done exactly once, even if two overlapping invocations (a
+// cron tick landing at the same moment as a manual test run, say) both
+// process the same item — rare, and harmless either way, but this keeps the
+// doneKeys list from growing duplicate entries if it happens.
+function markDone(progress, key) {
+  if (progress.doneKeys.indexOf(key) === -1) progress.doneKeys.push(key);
+}
+
+module.exports = { isoWeekId, loadProgress, saveProgress, timeBudgetMs, markDone };
