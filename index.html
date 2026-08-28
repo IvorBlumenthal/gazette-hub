@@ -60,8 +60,10 @@ header{background:var(--navy);color:#fff;padding:0 32px;}
 .notice-meta .gaz-no{color:var(--gold);font-weight:600;}
 .notice-summary{font-size:.83rem;color:var(--text-mid);line-height:1.6;margin-bottom:8px;}
 .notice-note{font-size:.78rem;background:var(--green-light);color:var(--green);border-left:3px solid var(--green);padding:6px 10px;border-radius:0 var(--radius) var(--radius) 0;}
-.notice-link{display:inline-block;font-size:.78rem;font-weight:600;color:var(--navy-light);margin-top:8px;}
+.notice-link{display:inline-block;font-size:.78rem;font-weight:600;color:var(--navy-light);margin-top:8px;margin-right:14px;}
 .notice-link:hover{text-decoration:underline;color:var(--gold);}
+.notice-search-link{display:inline-block;font-size:.78rem;color:var(--text-soft);margin-top:8px;}
+.notice-search-link:hover{text-decoration:underline;color:var(--text-mid);}
 .spinner{text-align:center;padding:28px;color:var(--text-soft);font-size:.88rem;}
 .spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -236,6 +238,20 @@ async function apiFetch(payload) {
     return await res.json();
   } catch (err) { console.error('API error:', err); return null; }
 }
+// Builds a "search for this yourself" link, scoped to the official
+// government domains, for a notice — shown for EVERY notice, not just ones
+// where our own link verification failed. This is deliberately never a
+// guessed direct document link (that's exactly what lib/verifyLinks.js on
+// the server exists to prevent) — it's a plain search query the reader runs
+// themselves, so it can never 404, never be the wrong document, and never
+// depend on any one site's uptime. See netlify/functions/lib/searchLink.js
+// for the server-side equivalent used in emails; kept identical in spirit
+// here since this page has no build step to share the module directly.
+function gazetteSearchUrl(n) {
+  const terms = [n.gazette_no || '', 'government gazette', n.title || '', 'site:gov.za OR site:gpwonline.co.za']
+    .filter(t => t).join(' ');
+  return 'https://www.google.com/search?q=' + encodeURIComponent(terms);
+}
 function renderNotices(notices) {
   if (!notices || notices.length === 0) return '<div class="empty-msg">No notices for this period.</div>';
   return notices.map(n => `
@@ -244,7 +260,10 @@ function renderNotices(notices) {
       <div class="notice-meta"><span class="gaz-no">${escHtml(n.gazette_no || '')}</span><span>${escHtml(n.date || '')}</span></div>
       <div class="notice-summary">${escHtml(n.summary || '')}</div>
       ${n.practitioner_note ? `<div class="notice-note">📌 ${escHtml(n.practitioner_note)}</div>` : ''}
-      ${n.source_url ? `<a class="notice-link" href="${escHtml(n.source_url)}" target="_blank" rel="noopener">View full notice ↗</a>` : ''}
+      <div>
+        ${n.source_url ? `<a class="notice-link" href="${escHtml(n.source_url)}" target="_blank" rel="noopener">View full notice ↗</a>` : ''}
+        <a class="notice-search-link" href="${escHtml(gazetteSearchUrl(n))}" target="_blank" rel="noopener">🔍 ${n.source_url ? 'Search to double-check' : 'Search for this notice'}</a>
+      </div>
     </div>`).join('');
 }
 function spinner(msg) { return `<div class="spinner"><span class="spin"></span>${msg}</div>`; }
