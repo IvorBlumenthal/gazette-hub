@@ -314,23 +314,50 @@ function downloadVisitorsCsv() {
   URL.revokeObjectURL(url);
 }
 
+// gazette-scheduler.js now runs as a resumable sweep (see
+// lib/sweepProgress.js) — one 60-second click can no longer be assumed to
+// finish all 24 category/period combinations by itself, since a single AI
+// search call can itself take a large chunk of that 60 seconds. So this
+// keeps calling the endpoint, one invocation at a time, until it reports
+// the week's sweep is actually complete, rather than stopping after one
+// call and reporting a partial result as if it were the whole thing.
+const MAX_REFRESH_CALLS = 30; // generous ceiling so a persistently-failing run can't loop forever
+
 async function refreshGazetteCache() {
   const btn = document.getElementById('refresh-btn');
   const status = document.getElementById('refresh-status');
   btn.disabled = true;
-  btn.textContent = 'Refreshing… this can take a few minutes';
   status.textContent = 'Re-fetching every active category from the gazette. Please don\'t close this tab.';
+
+  let totalOk = 0;
+  let totalFailed = 0;
+  let calls = 0;
+
   try {
-    const res = await fetch('/.netlify/functions/gazette-scheduler', { method: 'POST', headers: { 'x-admin-password': getPw() } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-    const results = data.results || [];
-    const failed = results.filter(r => r.error).length;
-    const ok = results.length - failed;
-    banner(`Refresh complete: ${ok} of ${results.length} category/period combinations updated.` + (failed ? ` ${failed} failed — try again shortly.` : ''), failed ? 'err' : 'ok');
-    status.textContent = 'Last refreshed just now (' + new Date().toLocaleTimeString() + ').';
+    while (calls < MAX_REFRESH_CALLS) {
+      calls++;
+      btn.textContent = `Refreshing… call ${calls}`;
+      const res = await fetch('/.netlify/functions/gazette-scheduler', { method: 'POST', headers: { 'x-admin-password': getPw() } });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+
+      const results = data.results || [];
+      const failed = results.filter(r => r.error).length;
+      totalOk += results.length - failed;
+      totalFailed += failed;
+      status.textContent = `${data.doneSoFar} of ${data.totalCombinations} combinations done so far (call ${calls})…`;
+
+      if (data.weekComplete) {
+        banner(`Refresh complete: ${data.doneSoFar} of ${data.totalCombinations} category/period combinations updated over ${calls} call${calls === 1 ? '' : 's'}.` + (totalFailed ? ` ${totalFailed} attempt${totalFailed === 1 ? '' : 's'} failed along the way but were retried.` : ''), 'ok');
+        status.textContent = 'Last refreshed just now (' + new Date().toLocaleTimeString() + ').';
+        return;
+      }
+      // Otherwise there's more to do — loop straight into the next call.
+    }
+    banner(`Stopped after ${calls} calls — ${totalOk} combinations updated, but the sweep hadn't finished yet. Click the button again to continue.`, 'err');
+    status.textContent = '';
   } catch (err) {
-    banner('Refresh failed: ' + err.message, 'err');
+    banner('Refresh failed: ' + err.message + (calls > 1 ? ` (after ${calls} calls — click again to resume from where it left off).` : ''), 'err');
     status.textContent = '';
   } finally {
     btn.disabled = false;
@@ -401,14 +428,15 @@ async function publishNewsletter() {
   if (!confirm('Publish this newsletter now? It will go live on the site and be emailed to every confirmed subscriber immediately.')) return;
   try {
     const data = await nlApiCall({ action: 'publish' });
-    banner(`Published. Emailed ${data.emailsSent} subscriber${data.emailsSent === 1 ? '' : 's'}${data.emailsFailed ? ` (${data.emailsFailed} failed)` : ''}.`, 'ok');
+    const skipped = data.skippedNoMatchingTopics ? `, ${data.skippedNoMatchingTopics} skipped (none of their chosen topics had anything new)` : '';
+    banner(`Published. Emailed ${data.emailsSent} subscriber${data.emailsSent === 1 ? '' : 's'}${data.emailsFailed ? ` (${data.emailsFailed} failed)` : ''}${skipped}.`, 'ok');
     await loadNewsletter();
   } catch (err) {
     banner(err.message, 'err');
   }
 }
 
-function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escHtml(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&quot;'); }
 
 window.addEventListener('DOMContentLoaded', async () => {
   if (getPw()) {
