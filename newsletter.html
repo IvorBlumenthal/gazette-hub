@@ -296,8 +296,9 @@ async function saveManagePrefs() {
     document.getElementById('banner').innerHTML = `<div class="msg err">${escHtml(err.message)}</div>`;
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Save preferences';
+        btn.textContent = 'Save preferences';
   }
+}
 
 function initSite() {
   const params = new URLSearchParams(window.location.search);
