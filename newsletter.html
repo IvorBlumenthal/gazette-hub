@@ -183,8 +183,10 @@ function getCheckedCategories(containerId) {
 // double-check a summary against the real gazette, not just when our own
 // link verification failed to find a direct document.
 function gazetteSearchUrl(n) {
-  const terms = [n.gazette_no || '', 'government gazette', n.title || '', 'site:gov.za OR site:gpwonline.co.za']
-    .filter(t => t).join(' ');
+  const gazetteNo = (n.gazette_no || '').trim();
+  const title = (n.title || '').trim();
+  const leadTerms = gazetteNo ? [gazetteNo, 'government gazette'] : [title.split(/\s+/).slice(0, 6).join(' '), 'government gazette'];
+  const terms = leadTerms.concat(['site:gov.za OR site:gpwonline.co.za']).filter(t => t).join(' ');
   return 'https://www.google.com/search?q=' + encodeURIComponent(terms);
 }
 function renderIssue(issue) {
