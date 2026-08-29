@@ -24,15 +24,30 @@
 // (sars.gov.za, labour.gov.za, etc.), not just gov.za itself, since Google's
 // site: operator matches on hostname suffix.
 //
-// The notice's own title is included WITHOUT quotes deliberately — it's an
-// AI-written paraphrase, not necessarily the gazette's exact official
-// wording, so forcing an exact-phrase match could hide a real result that
-// uses slightly different words.
+// The query deliberately leads with the gazette number, not the notice's
+// own title. The title is an AI-written paraphrase, not the gazette's exact
+// official wording — earlier this function included the whole title, and in
+// practice that made queries so long and specific (a dozen-plus required
+// words, often with punctuation like a colon) that Google returned zero
+// results even when a real matching document existed. The gazette number is
+// the one piece of the notice that IS the document's actual identifier, so
+// it's far more likely to appear on the real page. This can land on the
+// broader gazette issue rather than the specific notice within it (one
+// issue often bundles many notices under one number), but that's still the
+// genuine official document to search from. Only when a notice has no
+// gazette number at all does this fall back to the first few words of the
+// title, kept short for the same reason — a short fragment is still likely
+// to match real text, where the full title usually isn't.
+
+function firstWords(str, n) {
+  return String(str || '').trim().split(/\s+/).slice(0, n).join(' ');
+}
 
 function gazetteSearchUrl(notice) {
   const gazetteNo = String((notice && notice.gazette_no) || '').trim();
   const title = String((notice && notice.title) || '').trim();
-  const terms = [gazetteNo, 'government gazette', title, 'site:gov.za OR site:gpwonline.co.za']
+  const leadTerms = gazetteNo ? [gazetteNo, 'government gazette'] : [firstWords(title, 6), 'government gazette'];
+  const terms = leadTerms.concat(['site:gov.za OR site:gpwonline.co.za'])
     .filter(function (t) { return t; })
     .join(' ');
   return 'https://www.google.com/search?q=' + encodeURIComponent(terms);
