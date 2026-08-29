@@ -229,4 +229,141 @@ async function loadSpecificMonth(month) {
     const data = await res.json();
     document.getElementById('latest-card').innerHTML = renderIssue(data.issue);
   } catch (err) {
-    document.getElementById('latest-card').innerHTML = '<div class="msg err">Could
+        document.getElementById('latest-card').innerHTML = '<div class="msg err">Could not find that issue.</div>';
+  }
+}
+
+async function subscribe() {
+  const email = document.getElementById('sub-email').value.trim();
+  const btn = document.getElementById('sub-btn');
+  if (!email) return;
+  const categories = getCheckedCategories('sub-cat-list');
+  if (allCategories.length > 0 && categories.length === 0) {
+    document.getElementById('banner').innerHTML = '<div class="msg err">Please choose at least one topic — or leave them all checked to get everything.</div>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const res = await fetch('/.netlify/functions/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, categories }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    document.getElementById('banner').innerHTML = data.alreadyConfirmed
+      ? '<div class="msg ok">You\'re already subscribed.</div>'
+      : '<div class="msg ok">Almost there — check your email and click the confirmation link.</div>';
+    document.getElementById('sub-email').value = '';
+  } catch (err) {
+    document.getElementById('banner').innerHTML = `<div class="msg err">${escHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Subscribe';
+  }
+}
+
+// ── Manage existing subscription (reached via ?manage=<token>) ─
+async function initManageMode(token) {
+  document.getElementById('manage-card').style.display = 'block';
+  document.getElementById('subscribe-card').style.display = 'none';
+  await loadCategoriesForPrefs();
+  try {
+    const res = await fetch('/.netlify/functions/manage-subscription?token=' + encodeURIComponent(token));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'That link is invalid or has expired.');
+    document.getElementById('manage-email').textContent = data.email;
+    renderCategoryChecklist('manage-cat-list', data.categories);
+  } catch (err) {
+    document.getElementById('manage-card').innerHTML = `<div class="msg err">${escHtml(err.message)}</div>`;
+  }
+}
+
+async function saveManagePrefs() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('manage');
+  const btn = document.getElementById('manage-save-btn');
+  const categories = getCheckedCategories('manage-cat-list');
+  if (allCategories.length > 0 && categories.length === 0) {
+    document.getElementById('banner').innerHTML = '<div class="msg err">Please choose at least one topic — or leave them all checked to get everything.</div>';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const res = await fetch('/.netlify/functions/manage-subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, categories }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    document.getElementById('banner').innerHTML = '<div class="msg ok">Your preferences have been saved.</div>';
+  } catch (err) {
+    document.getElementById('banner').innerHTML = `<div class="msg err">${escHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save preferences';
+  }
+
+function initSite() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('confirmed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">Subscription confirmed — you\'re on the list.</div>';
+  else if (params.get('confirmed') === '0') document.getElementById('banner').innerHTML = '<div class="msg err">That confirmation link is invalid or has expired.</div>';
+  else if (params.get('unsubscribed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">You\'ve been unsubscribed.</div>';
+
+  const manageToken = params.get('manage');
+  if (manageToken) initManageMode(manageToken);
+  else loadCategoriesForPrefs().then(() => renderCategoryChecklist('sub-cat-list', []));
+
+  const month = params.get('month');
+  if (month) loadSpecificMonth(month);
+  else loadLatest();
+
+  document.getElementById('sub-email').addEventListener('keydown', e => { if (e.key === 'Enter') subscribe(); });
+}
+
+// ── Access gate ──────────────────────────────────────────────
+// Visitors must register (company, email, cellphone) once per browser
+// before the site content becomes visible. See register-visitor.js. Shares
+// the same localStorage key as index.html, so registering on either page
+// covers both.
+const GATE_KEY = 'gazette_registered';
+
+function showSite() {
+  document.getElementById('access-gate').style.display = 'none';
+  document.getElementById('site-content').style.display = 'block';
+  initSite();
+}
+
+async function submitGate() {
+  const company = document.getElementById('gate-company').value.trim();
+  const email = document.getElementById('gate-email').value.trim();
+  const phone = document.getElementById('gate-phone').value.trim();
+  const errEl = document.getElementById('gate-err');
+  errEl.innerHTML = '';
+  if (!company || !email || !phone) {
+    errEl.innerHTML = '<div class="gate-err">Please fill in all three fields.</div>';
+    return;
+  }
+  const btn = document.getElementById('gate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Please wait…';
+  try {
+    const res = await fetch('/.netlify/functions/register-visitor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, phone, company, page: location.pathname }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    localStorage.setItem(GATE_KEY, '1');
+    showSite();
+  } catch (err) {
+    errEl.innerHTML = `<div class="gate-err">${escHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continue to site';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem(GATE_KEY) === '1') { showSite(); return; }
+  document.getElementById('gate-phone').addEventListener('keydown', e => { if (e.key === 'Enter') submitGate(); });
+});
+</script>
+</body>
+</html>
