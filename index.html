@@ -248,11 +248,13 @@ async function apiFetch(payload) {
 // for the server-side equivalent used in emails; kept identical in spirit
 // here since this page has no build step to share the module directly.
 function gazetteSearchUrl(n) {
-  const terms = [n.gazette_no || '', 'government gazette', n.title || '', 'site:gov.za OR site:gpwonline.co.za']
-    .filter(t => t).join(' ');
+  const gazetteNo = (n.gazette_no || '').trim();
+  const title = (n.title || '').trim();
+  const leadTerms = gazetteNo ? [gazetteNo, 'government gazette'] : [title.split(/\s+/).slice(0, 6).join(' '), 'government gazette'];
+  const terms = leadTerms.concat(['site:gov.za OR site:gpwonline.co.za']).filter(t => t).join(' ');
   return 'https://www.google.com/search?q=' + encodeURIComponent(terms);
 }
-function renderNotices(notices) {
+  function renderNotices(notices) {
   if (!notices || notices.length === 0) return '<div class="empty-msg">No notices for this period.</div>';
   return notices.map(n => `
     <div class="notice-card">
