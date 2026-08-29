@@ -295,12 +295,11 @@ async function saveManagePrefs() {
   } catch (err) {
     document.getElementById('banner').innerHTML = `<div class="msg err">${escHtml(err.message)}</div>`;
   } finally {
-    btn.disabled = false;
-        btn.textContent = 'Save preferences';
+        btn.disabled = false;
+    btn.textContent = 'Save preferences';
   }
 }
-
-function initSite() {
+  function initSite() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('confirmed') === '1') document.getElementById('banner').innerHTML = '<div class="msg ok">Subscription confirmed — you\'re on the list.</div>';
   else if (params.get('confirmed') === '0') document.getElementById('banner').innerHTML = '<div class="msg err">That confirmation link is invalid or has expired.</div>';
